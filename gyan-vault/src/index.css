@@ -1,0 +1,22 @@
+@import "tailwindcss";
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: linear-gradient(135deg, #0f172a, #1e293b);
+  color: #f1f5f9;
+}
+
+/* Card Styling */
+.auth-card {
+  @apply bg-white/10 backdrop-blur-xl border border-white/20 shadow-2xl rounded-3xl;
+}
+
+/* Input Styling */
+.input-field {
+  @apply w-full p-3 rounded-xl bg-white/5 border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition;
+}
+
+/* Button Styling */
+.primary-btn {
+  @apply w-full py-3 rounded-xl font-semibold bg-blue-600 hover:bg-blue-700 transition duration-300;
+}
