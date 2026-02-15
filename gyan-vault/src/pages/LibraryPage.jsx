@@ -1,0 +1,120 @@
+import { useState, useEffect } from 'react';
+import { toast } from 'react-hot-toast';
+import { HiOutlineDocumentText, HiOutlineTrash, HiOutlineClock, HiOutlineCheckCircle, HiOutlineExclamationCircle } from 'react-icons/hi';
+import Sidebar from '../components/Sidebar';
+import api from '../api';
+
+function LibraryPage() {
+    const [documents, setDocuments] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        fetchDocuments();
+    }, []);
+
+    const fetchDocuments = async () => {
+        try {
+            const res = await api.get('/documents/');
+            setDocuments(res.data.documents);
+        } catch {
+            toast.error('Failed to load documents');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDelete = async (docId, docName) => {
+        if (!confirm(`Delete "${docName}"? This cannot be undone.`)) return;
+
+        try {
+            await api.delete(`/documents/${docId}`);
+            setDocuments(documents.filter(d => d.id !== docId));
+            toast.success('Document deleted');
+        } catch {
+            toast.error('Failed to delete document');
+        }
+    };
+
+    const getStatusIcon = (status) => {
+        switch (status) {
+            case 'ready':
+                return <HiOutlineCheckCircle size={18} className="text-green-400" />;
+            case 'processing':
+                return <HiOutlineClock size={18} className="text-yellow-400" />;
+            case 'error':
+                return <HiOutlineExclamationCircle size={18} className="text-red-400" />;
+            default:
+                return null;
+        }
+    };
+
+    const formatDate = (dateStr) => {
+        return new Date(dateStr).toLocaleDateString('en-IN', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric',
+        });
+    };
+
+    return (
+        <div className="app-layout">
+            <Sidebar />
+            <main className="main-content">
+                <div className="page-header">
+                    <h1 className="page-title">My Library</h1>
+                    <p className="page-subtitle">
+                        {documents.length} document{documents.length !== 1 ? 's' : ''} in your knowledge base
+                    </p>
+                </div>
+
+                {loading ? (
+                    <div className="loading-state">
+                        <div className="processing-spinner"></div>
+                        <p>Loading documents...</p>
+                    </div>
+                ) : documents.length === 0 ? (
+                    <div className="empty-state">
+                        <HiOutlineDocumentText size={64} className="text-gray-500" />
+                        <h3>No documents yet</h3>
+                        <p>Upload your first PDF to get started</p>
+                    </div>
+                ) : (
+                    <div className="documents-grid">
+                        {documents.map((doc) => (
+                            <div key={doc.id} className="doc-card">
+                                <div className="doc-card-header">
+                                    <div className="doc-card-icon">
+                                        <HiOutlineDocumentText size={28} />
+                                    </div>
+                                    <button
+                                        className="doc-delete-btn"
+                                        onClick={() => handleDelete(doc.id, doc.original_name)}
+                                        title="Delete document"
+                                    >
+                                        <HiOutlineTrash size={18} />
+                                    </button>
+                                </div>
+                                <h3 className="doc-card-title" title={doc.original_name}>
+                                    {doc.original_name}
+                                </h3>
+                                <div className="doc-card-meta">
+                                    <span className="doc-card-status">
+                                        {getStatusIcon(doc.status)}
+                                        {doc.status}
+                                    </span>
+                                    <span className="doc-card-date">{formatDate(doc.upload_date)}</span>
+                                </div>
+                                <div className="doc-card-stats">
+                                    <span>{doc.page_count} pages</span>
+                                    <span>{doc.chunk_count} chunks</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </main>
+        </div>
+    );
+}
+
+export default LibraryPage;
