@@ -4,11 +4,13 @@ from database.connection import init_db
 from routes.auth import router as auth_router
 from routes.documents import router as documents_router
 from routes.query import router as query_router
+from routes.chat import router as chat_router
+from routes.analytics import router as analytics_router
 
 app = FastAPI(
     title="Gyan Vault API",
-    description="AI-powered document management and intelligent query system",
-    version="1.0.0",
+    description="AI-powered document management and intelligent query system with chat history, summarization, and multi-format support",
+    version="2.0.0",
 )
 
 # CORS — allow frontend dev server
@@ -24,6 +26,8 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(documents_router)
 app.include_router(query_router)
+app.include_router(chat_router)
+app.include_router(analytics_router)
 
 
 @app.on_event("startup")
@@ -36,6 +40,7 @@ def on_startup():
 def root():
     return {
         "name": "Gyan Vault API",
+        "version": "2.0.0",
         "status": "running",
         "docs": "/docs",
     }

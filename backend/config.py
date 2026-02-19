@@ -4,7 +4,9 @@ from pathlib import Path
 # Base directory
 BASE_DIR = Path(__file__).resolve().parent
 
-# Database
+# Database — PostgreSQL (primary) or SQLite (fallback)
+# To use PostgreSQL: set DATABASE_URL=postgresql://postgres:postgres@localhost:5432/gyan_vault
+# Or install PostgreSQL and the default below will be used
 DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR / 'gyan_vault.db'}")
 
 # JWT

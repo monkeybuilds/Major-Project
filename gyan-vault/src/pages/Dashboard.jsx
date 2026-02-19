@@ -1,61 +1,78 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { HiOutlineDocumentText, HiOutlineCloudUpload, HiOutlineChatAlt2, HiOutlineCollection } from 'react-icons/hi';
+import { HiOutlineDocumentText, HiOutlineCloudUpload, HiOutlineChatAlt2, HiOutlineCollection, HiOutlineChartBar, HiOutlineDocumentSearch } from 'react-icons/hi';
 import Sidebar from '../components/Sidebar';
 import api from '../api';
 
 function Dashboard() {
     const navigate = useNavigate();
     const user = JSON.parse(localStorage.getItem('gyan_vault_user') || '{}');
-    const [stats, setStats] = useState({ totalDocs: 0, readyDocs: 0, totalChunks: 0 });
+    const [stats, setStats] = useState({
+        total_documents: 0,
+        ready_documents: 0,
+        total_pages: 0,
+        total_chunks: 0,
+        total_queries: 0,
+        total_chat_sessions: 0,
+    });
+    const [activity, setActivity] = useState([]);
 
     useEffect(() => {
         fetchStats();
+        fetchActivity();
     }, []);
 
     const fetchStats = async () => {
         try {
-            const res = await api.get('/documents/');
-            const docs = res.data.documents;
-            setStats({
-                totalDocs: docs.length,
-                readyDocs: docs.filter(d => d.status === 'ready').length,
-                totalChunks: docs.reduce((sum, d) => sum + d.chunk_count, 0),
-            });
-        } catch {
-            // Silently fail on dashboard load
-        }
+            const res = await api.get('/analytics/stats');
+            setStats(res.data);
+        } catch { /* silently fail */ }
+    };
+
+    const fetchActivity = async () => {
+        try {
+            const res = await api.get('/analytics/activity');
+            setActivity(res.data.recent_activity);
+        } catch { /* silently fail */ }
     };
 
     const quickActions = [
         {
             title: 'Upload Document',
-            description: 'Upload a PDF to your knowledge base',
+            description: 'Upload PDF, DOCX, or TXT files',
             icon: <HiOutlineCloudUpload size={32} />,
             color: 'from-blue-500 to-cyan-500',
             onClick: () => navigate('/upload'),
         },
         {
             title: 'My Library',
-            description: 'Browse your uploaded documents',
+            description: 'Browse documents with AI summaries',
             icon: <HiOutlineCollection size={32} />,
             color: 'from-purple-500 to-pink-500',
             onClick: () => navigate('/library'),
         },
         {
             title: 'Ask AI',
-            description: 'Query your documents with AI',
+            description: 'Chat with your documents',
             icon: <HiOutlineChatAlt2 size={32} />,
             color: 'from-emerald-500 to-teal-500',
             onClick: () => navigate('/query'),
         },
     ];
 
+    const formatDate = (dateStr) => {
+        try {
+            return new Date(dateStr).toLocaleDateString('en-IN', {
+                day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+            });
+        } catch { return dateStr; }
+    };
+
     return (
         <div className="app-layout">
             <Sidebar />
             <main className="main-content">
-                {/* Welcome Section */}
+                {/* Welcome */}
                 <div className="welcome-section">
                     <h1 className="welcome-title">
                         Welcome back, <span className="text-gradient">{user.name || 'User'}</span> 👋
@@ -65,25 +82,25 @@ function Dashboard() {
                     </p>
                 </div>
 
-                {/* Stats Cards */}
+                {/* Stats */}
                 <div className="stats-grid">
                     <div className="stat-card">
                         <div className="stat-icon bg-blue-500/20 text-blue-400">
                             <HiOutlineDocumentText size={24} />
                         </div>
                         <div>
-                            <p className="stat-value">{stats.totalDocs}</p>
-                            <p className="stat-label">Total Documents</p>
+                            <p className="stat-value">{stats.total_documents}</p>
+                            <p className="stat-label">Documents</p>
                         </div>
                     </div>
 
                     <div className="stat-card">
                         <div className="stat-icon bg-green-500/20 text-green-400">
-                            <HiOutlineDocumentText size={24} />
+                            <HiOutlineDocumentSearch size={24} />
                         </div>
                         <div>
-                            <p className="stat-value">{stats.readyDocs}</p>
-                            <p className="stat-label">Ready for Queries</p>
+                            <p className="stat-value">{stats.total_pages}</p>
+                            <p className="stat-label">Pages Processed</p>
                         </div>
                     </div>
 
@@ -92,8 +109,18 @@ function Dashboard() {
                             <HiOutlineCollection size={24} />
                         </div>
                         <div>
-                            <p className="stat-value">{stats.totalChunks}</p>
+                            <p className="stat-value">{stats.total_chunks}</p>
                             <p className="stat-label">Knowledge Chunks</p>
+                        </div>
+                    </div>
+
+                    <div className="stat-card">
+                        <div className="stat-icon bg-amber-500/20 text-amber-400">
+                            <HiOutlineChatAlt2 size={24} />
+                        </div>
+                        <div>
+                            <p className="stat-value">{stats.total_queries}</p>
+                            <p className="stat-label">Queries Asked</p>
                         </div>
                     </div>
                 </div>
@@ -102,11 +129,7 @@ function Dashboard() {
                 <h2 className="section-title">Quick Actions</h2>
                 <div className="actions-grid">
                     {quickActions.map((action) => (
-                        <div
-                            key={action.title}
-                            className="action-card"
-                            onClick={action.onClick}
-                        >
+                        <div key={action.title} className="action-card" onClick={action.onClick}>
                             <div className={`action-icon bg-gradient-to-br ${action.color}`}>
                                 {action.icon}
                             </div>
@@ -115,6 +138,24 @@ function Dashboard() {
                         </div>
                     ))}
                 </div>
+
+                {/* Recent Activity */}
+                {activity.length > 0 && (
+                    <>
+                        <h2 className="section-title">Recent Activity</h2>
+                        <div className="activity-feed">
+                            {activity.map((item, idx) => (
+                                <div key={idx} className="activity-item">
+                                    <div className={`activity-dot ${item.type === 'upload' ? 'upload' : 'query'}`}></div>
+                                    <div className="activity-info">
+                                        <p className="activity-text">{item.title}</p>
+                                        <p className="activity-date">{formatDate(item.date)}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </>
+                )}
             </main>
         </div>
     );

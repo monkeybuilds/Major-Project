@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
-import { HiOutlineDocumentText, HiOutlineTrash, HiOutlineClock, HiOutlineCheckCircle, HiOutlineExclamationCircle } from 'react-icons/hi';
+import { HiOutlineDocumentText, HiOutlineTrash, HiOutlineClock, HiOutlineCheckCircle, HiOutlineExclamationCircle, HiOutlineChevronDown, HiOutlineChevronUp } from 'react-icons/hi';
 import Sidebar from '../components/Sidebar';
 import api from '../api';
 
 function LibraryPage() {
     const [documents, setDocuments] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [expandedDoc, setExpandedDoc] = useState(null);
 
     useEffect(() => {
         fetchDocuments();
@@ -25,7 +26,6 @@ function LibraryPage() {
 
     const handleDelete = async (docId, docName) => {
         if (!confirm(`Delete "${docName}"? This cannot be undone.`)) return;
-
         try {
             await api.delete(`/documents/${docId}`);
             setDocuments(documents.filter(d => d.id !== docId));
@@ -37,22 +37,16 @@ function LibraryPage() {
 
     const getStatusIcon = (status) => {
         switch (status) {
-            case 'ready':
-                return <HiOutlineCheckCircle size={18} className="text-green-400" />;
-            case 'processing':
-                return <HiOutlineClock size={18} className="text-yellow-400" />;
-            case 'error':
-                return <HiOutlineExclamationCircle size={18} className="text-red-400" />;
-            default:
-                return null;
+            case 'ready': return <HiOutlineCheckCircle size={18} className="text-green-400" />;
+            case 'processing': return <HiOutlineClock size={18} className="text-yellow-400" />;
+            case 'error': return <HiOutlineExclamationCircle size={18} className="text-red-400" />;
+            default: return null;
         }
     };
 
     const formatDate = (dateStr) => {
         return new Date(dateStr).toLocaleDateString('en-IN', {
-            day: 'numeric',
-            month: 'short',
-            year: 'numeric',
+            day: 'numeric', month: 'short', year: 'numeric',
         });
     };
 
@@ -76,7 +70,7 @@ function LibraryPage() {
                     <div className="empty-state">
                         <HiOutlineDocumentText size={64} className="text-gray-500" />
                         <h3>No documents yet</h3>
-                        <p>Upload your first PDF to get started</p>
+                        <p>Upload your first file to get started</p>
                     </div>
                 ) : (
                     <div className="documents-grid">
@@ -94,9 +88,23 @@ function LibraryPage() {
                                         <HiOutlineTrash size={18} />
                                     </button>
                                 </div>
+
                                 <h3 className="doc-card-title" title={doc.original_name}>
                                     {doc.original_name}
                                 </h3>
+
+                                {/* Tags */}
+                                {doc.tags && doc.tags.length > 0 && (
+                                    <div className="doc-tags">
+                                        {doc.tags.slice(0, 3).map((tag, i) => (
+                                            <span key={i} className="doc-tag">{tag}</span>
+                                        ))}
+                                        {doc.tags.length > 3 && (
+                                            <span className="doc-tag-more">+{doc.tags.length - 3}</span>
+                                        )}
+                                    </div>
+                                )}
+
                                 <div className="doc-card-meta">
                                     <span className="doc-card-status">
                                         {getStatusIcon(doc.status)}
@@ -104,10 +112,30 @@ function LibraryPage() {
                                     </span>
                                     <span className="doc-card-date">{formatDate(doc.upload_date)}</span>
                                 </div>
+
                                 <div className="doc-card-stats">
                                     <span>{doc.page_count} pages</span>
                                     <span>{doc.chunk_count} chunks</span>
                                 </div>
+
+                                {/* Expandable Summary */}
+                                {doc.summary && (
+                                    <div className="doc-summary-section">
+                                        <button
+                                            className="doc-summary-toggle"
+                                            onClick={() => setExpandedDoc(expandedDoc === doc.id ? null : doc.id)}
+                                        >
+                                            <span>AI Summary</span>
+                                            {expandedDoc === doc.id
+                                                ? <HiOutlineChevronUp size={16} />
+                                                : <HiOutlineChevronDown size={16} />
+                                            }
+                                        </button>
+                                        {expandedDoc === doc.id && (
+                                            <p className="doc-summary-text">{doc.summary}</p>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         ))}
                     </div>

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
 from sqlalchemy.sql import func
 from database.connection import Base
 
@@ -14,3 +14,5 @@ class Document(Base):
     page_count = Column(Integer, default=0)
     chunk_count = Column(Integer, default=0)
     status = Column(String(50), default="processing")  # processing, ready, error
+    summary = Column(Text, default="")
+    tags = Column(String(500), default="")

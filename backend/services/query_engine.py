@@ -2,12 +2,10 @@ from services.embeddings import generate_single_embedding
 from services.vector_store import search_all_user_docs
 from config import GOOGLE_API_KEY, LLM_MODEL_NAME
 
-# Lazy-loaded LLM
 _llm = None
 
 
 def _get_llm():
-    """Get or initialise the Gemini LLM."""
     global _llm
     if _llm is None:
         if not GOOGLE_API_KEY:
@@ -23,18 +21,16 @@ def _get_llm():
     return _llm
 
 
-def ask_question(question: str, doc_ids: list[int]) -> dict:
+def ask_question(question: str, doc_ids: list[int], chat_history: list[dict] | None = None) -> dict:
     """
-    RAG pipeline:
+    RAG pipeline with follow-up support:
     1. Embed the question
-    2. Retrieve relevant chunks from the user's documents
-    3. Feed context + question to Gemini LLM
-    4. Return the answer with source references
+    2. Retrieve relevant chunks
+    3. Include chat history for follow-up context
+    4. Feed to Gemini LLM
+    5. Return answer with sources
     """
-    # Step 1 — Embed the query
     query_embedding = generate_single_embedding(question)
-
-    # Step 2 — Retrieve relevant chunks
     results = search_all_user_docs(doc_ids, query_embedding, top_k=5)
 
     if not results:
@@ -43,7 +39,7 @@ def ask_question(question: str, doc_ids: list[int]) -> dict:
             "sources": [],
         }
 
-    # Step 3 — Build context
+    # Build context from retrieved chunks
     context_parts = []
     sources = []
     for i, r in enumerate(results):
@@ -57,19 +53,35 @@ def ask_question(question: str, doc_ids: list[int]) -> dict:
 
     context = "\n\n".join(context_parts)
 
-    prompt = f"""You are Gyan Vault, an AI assistant that answers questions based on the provided document context. 
+    # Build chat history string for follow-up context
+    history_str = ""
+    if chat_history:
+        history_parts = []
+        for msg in chat_history[-6:]:  # Last 6 messages (3 exchanges)
+            role = "User" if msg["role"] == "user" else "Assistant"
+            history_parts.append(f"{role}: {msg['content']}")
+        history_str = "\n".join(history_parts)
+
+    prompt = f"""You are Gyan Vault, an AI assistant that answers questions based on document context.
 Answer the user's question accurately using ONLY the information from the context below.
-If the context does not contain enough information to answer, say so clearly.
+If the context does not contain enough information, say so clearly.
 Always reference which source/page the information came from.
 
-Context:
+Context from documents:
 {context}
+"""
 
+    if history_str:
+        prompt += f"""
+Previous conversation (for follow-up context):
+{history_str}
+"""
+
+    prompt += f"""
 Question: {question}
 
 Answer:"""
 
-    # Step 4 — Get LLM response
     llm = _get_llm()
     response = llm.invoke(prompt)
 

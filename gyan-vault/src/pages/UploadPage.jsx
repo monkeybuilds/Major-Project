@@ -14,22 +14,32 @@ function UploadPage() {
     const fileInputRef = useRef();
     const navigate = useNavigate();
 
+    const ALLOWED_TYPES = [
+        'application/pdf',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'text/plain',
+    ];
+    const ALLOWED_EXTENSIONS = ['.pdf', '.docx', '.txt'];
+
+    const isValidFile = (f) => {
+        const ext = '.' + f.name.split('.').pop().toLowerCase();
+        return ALLOWED_TYPES.includes(f.type) || ALLOWED_EXTENSIONS.includes(ext);
+    };
+
     const handleDrop = (e) => {
         e.preventDefault();
         setDragging(false);
         const droppedFile = e.dataTransfer.files[0];
-        if (droppedFile?.type === 'application/pdf') {
+        if (droppedFile && isValidFile(droppedFile)) {
             setFile(droppedFile);
         } else {
-            toast.error('Only PDF files are supported');
+            toast.error('Unsupported file. Use PDF, DOCX, or TXT');
         }
     };
 
     const handleFileSelect = (e) => {
         const selectedFile = e.target.files[0];
-        if (selectedFile) {
-            setFile(selectedFile);
-        }
+        if (selectedFile) setFile(selectedFile);
     };
 
     const handleUpload = async () => {
@@ -41,13 +51,13 @@ function UploadPage() {
         formData.append('file', file);
 
         try {
-            setProgress('Processing PDF — extracting text, chunking, generating embeddings...');
+            setProgress('Processing — extracting text, chunking, generating embeddings & AI summary...');
             const res = await api.post('/documents/upload', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
             });
             setUploadedDoc(res.data);
             setProgress('');
-            toast.success('Document uploaded and processed successfully!');
+            toast.success('Document uploaded and processed!');
         } catch (err) {
             toast.error(err.response?.data?.detail || 'Upload failed');
             setProgress('');
@@ -68,12 +78,11 @@ function UploadPage() {
             <main className="main-content">
                 <div className="page-header">
                     <h1 className="page-title">Upload Document</h1>
-                    <p className="page-subtitle">Upload a PDF to add to your knowledge base</p>
+                    <p className="page-subtitle">Upload PDF, DOCX, or TXT files to your knowledge base</p>
                 </div>
 
                 {!uploadedDoc ? (
                     <>
-                        {/* Drop Zone */}
                         <div
                             className={`drop-zone ${dragging ? 'drop-zone-active' : ''}`}
                             onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
@@ -84,18 +93,17 @@ function UploadPage() {
                             <input
                                 type="file"
                                 ref={fileInputRef}
-                                accept=".pdf"
+                                accept=".pdf,.docx,.txt"
                                 onChange={handleFileSelect}
                                 hidden
                             />
                             <HiOutlineCloudUpload size={48} className="drop-zone-icon" />
                             <p className="drop-zone-text">
-                                Drag & drop your PDF here, or <span className="text-blue-400">browse</span>
+                                Drag & drop your file here, or <span className="text-blue-400">browse</span>
                             </p>
-                            <p className="drop-zone-hint">Supports PDF files only</p>
+                            <p className="drop-zone-hint">Supports PDF, DOCX, and TXT files</p>
                         </div>
 
-                        {/* Selected File Preview */}
                         {file && (
                             <div className="file-preview">
                                 <div className="file-preview-info">
@@ -105,24 +113,17 @@ function UploadPage() {
                                         <p className="file-size">{formatFileSize(file.size)}</p>
                                     </div>
                                 </div>
-                                <button
-                                    className="upload-btn"
-                                    onClick={handleUpload}
-                                    disabled={uploading}
-                                >
+                                <button className="upload-btn" onClick={handleUpload} disabled={uploading}>
                                     {uploading ? (
                                         <span className="flex items-center gap-2">
                                             <span className="spinner"></span>
                                             Processing...
                                         </span>
-                                    ) : (
-                                        'Upload & Process'
-                                    )}
+                                    ) : 'Upload & Process'}
                                 </button>
                             </div>
                         )}
 
-                        {/* Progress */}
                         {progress && (
                             <div className="processing-status">
                                 <div className="processing-spinner"></div>
@@ -131,10 +132,10 @@ function UploadPage() {
                         )}
                     </>
                 ) : (
-                    /* Success State */
                     <div className="upload-success">
                         <HiOutlineCheckCircle size={64} className="text-green-400" />
                         <h2 className="success-title">Document Processed Successfully!</h2>
+
                         <div className="success-stats">
                             <div className="success-stat">
                                 <span className="success-stat-value">{uploadedDoc.page_count}</span>
@@ -145,14 +146,27 @@ function UploadPage() {
                                 <span className="success-stat-label">Chunks</span>
                             </div>
                         </div>
+
+                        {/* AI Summary */}
+                        {uploadedDoc.summary && (
+                            <div className="upload-summary-card">
+                                <h3>🤖 AI Summary</h3>
+                                <p>{uploadedDoc.summary}</p>
+                                {uploadedDoc.tags && uploadedDoc.tags.length > 0 && (
+                                    <div className="upload-tags">
+                                        {uploadedDoc.tags.map((tag, i) => (
+                                            <span key={i} className="doc-tag">{tag}</span>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
                         <div className="success-actions">
                             <button className="primary-btn" onClick={() => navigate('/query')}>
                                 Ask Questions
                             </button>
-                            <button
-                                className="secondary-btn"
-                                onClick={() => { setFile(null); setUploadedDoc(null); }}
-                            >
+                            <button className="secondary-btn" onClick={() => { setFile(null); setUploadedDoc(null); }}>
                                 Upload Another
                             </button>
                         </div>

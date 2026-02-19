@@ -1,0 +1,61 @@
+from config import GOOGLE_API_KEY, LLM_MODEL_NAME
+
+_llm = None
+
+
+def _get_llm():
+    global _llm
+    if _llm is None:
+        if not GOOGLE_API_KEY:
+            raise RuntimeError("GOOGLE_API_KEY not set.")
+        from langchain_google_genai import ChatGoogleGenerativeAI
+        _llm = ChatGoogleGenerativeAI(
+            model=LLM_MODEL_NAME,
+            google_api_key=GOOGLE_API_KEY,
+            temperature=0.3,
+        )
+    return _llm
+
+
+def generate_summary(pages: list[str]) -> dict:
+    """
+    Generate a summary and extract key tags from document text.
+    Returns {'summary': str, 'tags': list[str]}.
+    """
+    # Combine first few pages for context (limit to ~3000 chars)
+    combined = "\n".join(pages)[:3000]
+
+    prompt = f"""Analyze the following document text and provide:
+1. A concise summary in 3-5 sentences that captures the main topics and purpose
+2. Extract exactly 5 key topic tags (single words or short phrases)
+
+Format your response EXACTLY like this:
+SUMMARY: <your summary here>
+TAGS: tag1, tag2, tag3, tag4, tag5
+
+Document text:
+{combined}"""
+
+    llm = _get_llm()
+    response = llm.invoke(prompt)
+    content = response.content
+
+    # Parse response
+    summary = ""
+    tags = []
+
+    lines = content.strip().split("\n")
+    for line in lines:
+        if line.upper().startswith("SUMMARY:"):
+            summary = line.split(":", 1)[1].strip()
+        elif line.upper().startswith("TAGS:"):
+            tags_str = line.split(":", 1)[1].strip()
+            tags = [t.strip() for t in tags_str.split(",") if t.strip()][:5]
+
+    # Fallback if parsing fails
+    if not summary:
+        summary = content[:300]
+    if not tags:
+        tags = ["document"]
+
+    return {"summary": summary, "tags": tags}
