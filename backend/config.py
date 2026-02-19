@@ -30,5 +30,5 @@ CHUNK_SIZE = 500
 CHUNK_OVERLAP = 50
 
 # Google Gemini
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "AIzaSyA1UZTtHdtGrNQSQaIKXd822msZVa-SRJQ")
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", " ")
 LLM_MODEL_NAME = "gemini-2.0-flash"
