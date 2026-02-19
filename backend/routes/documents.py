@@ -11,6 +11,8 @@ from services.chunking import chunk_text
 from services.embeddings import generate_embeddings
 from services.vector_store import store_vectors, delete_vectors
 from services.summarizer import generate_summary
+from services.crawler import scrape_url, is_valid_url
+import uuid
 
 router = APIRouter(prefix="/documents", tags=["Documents"])
 
@@ -34,6 +36,10 @@ class DocumentResponse(BaseModel):
 class DocumentListResponse(BaseModel):
     documents: list[DocumentResponse]
     total: int
+
+
+class CrawlRequest(BaseModel):
+    url: str
 
 
 def _doc_to_response(doc: Document) -> DocumentResponse:
@@ -123,6 +129,78 @@ async def upload_document(
         )
 
     return _doc_to_response(doc)
+
+
+@router.post("/crawl", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
+def crawl_website(
+    payload: CrawlRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Scrape a website and add it as a document."""
+    if not is_valid_url(payload.url):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid URL format",
+        )
+
+    try:
+        # Scrape
+        data = scrape_url(payload.url)
+        content = data["text"]
+        title = data["title"]
+        
+        # Save as text file
+        file_name = f"web_{uuid.uuid4().hex}.txt"
+        file_bytes = content.encode("utf-8")
+        unique_name, full_path = save_upload_file(file_bytes, file_name)
+        
+        # Create doc record
+        doc = Document(
+            user_id=current_user.id,
+            filename=unique_name,
+            original_name=payload.url,
+            status="processing",
+            tags="website",
+        )
+        db.add(doc)
+        db.commit()
+        db.refresh(doc)
+        
+        # Process (Chunk -> Embed -> Store)
+        # Wrap content as a single page or split? crawler returns full text.
+        # file_extractor.extract_text usually returns list of pages.
+        # We can simulate pages if we want, or just 1 page.
+        pages = [{"text": content, "page_number": 1}]
+        chunks = chunk_text(pages)
+        
+        texts = [c["text"] for c in chunks]
+        embeddings = generate_embeddings(texts)
+        store_vectors(doc.id, embeddings, chunks)
+        
+        # Summary
+        try:
+            summary_data = generate_summary(pages)
+            doc.summary = summary_data["summary"]
+            doc.tags = "website, " + ", ".join(summary_data["tags"])
+        except:
+            doc.summary = f"Content from {title}"
+            
+        doc.page_count = 1
+        doc.chunk_count = len(chunks)
+        doc.status = "ready"
+        db.commit()
+        db.refresh(doc)
+        
+        return _doc_to_response(doc)
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Crawling failed: {str(e)}")
 
 
 @router.get("/", response_model=DocumentListResponse)

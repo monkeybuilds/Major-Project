@@ -4,6 +4,8 @@ import { HiOutlineDocumentText, HiOutlineCloudUpload, HiOutlineChatAlt2, HiOutli
 import Sidebar from '../components/Sidebar';
 import api from '../api';
 
+import { SkeletonStat } from '../components/SkeletonCard';
+
 function Dashboard() {
     const navigate = useNavigate();
     const user = JSON.parse(localStorage.getItem('gyan_vault_user') || '{}');
@@ -16,6 +18,7 @@ function Dashboard() {
         total_chat_sessions: 0,
     });
     const [activity, setActivity] = useState([]);
+    const [loadingStats, setLoadingStats] = useState(true);
 
     useEffect(() => {
         fetchStats();
@@ -27,6 +30,7 @@ function Dashboard() {
             const res = await api.get('/analytics/stats');
             setStats(res.data);
         } catch { /* silently fail */ }
+        finally { setLoadingStats(false); }
     };
 
     const fetchActivity = async () => {
@@ -84,45 +88,56 @@ function Dashboard() {
 
                 {/* Stats */}
                 <div className="stats-grid">
-                    <div className="stat-card">
-                        <div className="stat-icon bg-blue-500/20 text-blue-400">
-                            <HiOutlineDocumentText size={24} />
-                        </div>
-                        <div>
-                            <p className="stat-value">{stats.total_documents}</p>
-                            <p className="stat-label">Documents</p>
-                        </div>
-                    </div>
+                    {loadingStats ? (
+                        <>
+                            <SkeletonStat />
+                            <SkeletonStat />
+                            <SkeletonStat />
+                            <SkeletonStat />
+                        </>
+                    ) : (
+                        <>
+                            <div className="stat-card">
+                                <div className="stat-icon bg-blue-500/20 text-blue-400">
+                                    <HiOutlineDocumentText size={24} />
+                                </div>
+                                <div>
+                                    <p className="stat-value">{stats.total_documents}</p>
+                                    <p className="stat-label">Documents</p>
+                                </div>
+                            </div>
 
-                    <div className="stat-card">
-                        <div className="stat-icon bg-green-500/20 text-green-400">
-                            <HiOutlineDocumentSearch size={24} />
-                        </div>
-                        <div>
-                            <p className="stat-value">{stats.total_pages}</p>
-                            <p className="stat-label">Pages Processed</p>
-                        </div>
-                    </div>
+                            <div className="stat-card">
+                                <div className="stat-icon bg-green-500/20 text-green-400">
+                                    <HiOutlineDocumentSearch size={24} />
+                                </div>
+                                <div>
+                                    <p className="stat-value">{stats.total_pages}</p>
+                                    <p className="stat-label">Pages Processed</p>
+                                </div>
+                            </div>
 
-                    <div className="stat-card">
-                        <div className="stat-icon bg-purple-500/20 text-purple-400">
-                            <HiOutlineCollection size={24} />
-                        </div>
-                        <div>
-                            <p className="stat-value">{stats.total_chunks}</p>
-                            <p className="stat-label">Knowledge Chunks</p>
-                        </div>
-                    </div>
+                            <div className="stat-card">
+                                <div className="stat-icon bg-purple-500/20 text-purple-400">
+                                    <HiOutlineCollection size={24} />
+                                </div>
+                                <div>
+                                    <p className="stat-value">{stats.total_chunks}</p>
+                                    <p className="stat-label">Knowledge Chunks</p>
+                                </div>
+                            </div>
 
-                    <div className="stat-card">
-                        <div className="stat-icon bg-amber-500/20 text-amber-400">
-                            <HiOutlineChatAlt2 size={24} />
-                        </div>
-                        <div>
-                            <p className="stat-value">{stats.total_queries}</p>
-                            <p className="stat-label">Queries Asked</p>
-                        </div>
-                    </div>
+                            <div className="stat-card">
+                                <div className="stat-icon bg-amber-500/20 text-amber-400">
+                                    <HiOutlineChatAlt2 size={24} />
+                                </div>
+                                <div>
+                                    <p className="stat-value">{stats.total_queries}</p>
+                                    <p className="stat-label">Queries Asked</p>
+                                </div>
+                            </div>
+                        </>
+                    )}
                 </div>
 
                 {/* Quick Actions */}

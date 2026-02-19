@@ -1,6 +1,19 @@
 import { useState, useRef, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
-import { HiOutlinePaperAirplane, HiOutlineDocumentText, HiOutlinePlus, HiOutlineTrash, HiOutlineChatAlt2, HiOutlineChevronLeft } from 'react-icons/hi';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import {
+    HiOutlinePaperAirplane,
+    HiOutlineDocumentText,
+    HiOutlinePlus,
+    HiOutlineTrash,
+    HiOutlineChatAlt2,
+    HiOutlineChevronLeft,
+    HiOutlineCloudUpload,
+    HiOutlineCheckCircle,
+    HiOutlineX,
+    HiOutlineGlobe,
+} from 'react-icons/hi';
 import Sidebar from '../components/Sidebar';
 import api from '../api';
 
@@ -8,7 +21,7 @@ function QueryPage() {
     const [messages, setMessages] = useState([
         {
             type: 'ai',
-            text: "Hello! I'm **Gyan Vault AI**. Ask me anything about your uploaded documents, and I'll find the answer for you. 📚",
+            text: "Hello! I'm **Gyan Vault AI**. Upload a document below and ask me anything about it. 📚",
             sources: [],
         }
     ]);
@@ -17,8 +30,20 @@ function QueryPage() {
     const [sessionId, setSessionId] = useState(null);
     const [sessions, setSessions] = useState([]);
     const [showHistory, setShowHistory] = useState(false);
+    const [deepResearch, setDeepResearch] = useState(false);
+
+    // Document upload & selection state
+    const [documents, setDocuments] = useState([]);
+    const [selectedDocIds, setSelectedDocIds] = useState([]);
+    const [uploading, setUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState('');
+    const [dragging, setDragging] = useState(false);
+
     const chatEndRef = useRef();
     const inputRef = useRef();
+    const fileInputRef = useRef();
+
+    const ALLOWED_EXTENSIONS = ['.pdf', '.docx', '.txt'];
 
     useEffect(() => {
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -26,8 +51,102 @@ function QueryPage() {
 
     useEffect(() => {
         fetchSessions();
+        fetchDocuments();
     }, []);
 
+    // ─── Document Fetching ────────────────────────────────────
+    const fetchDocuments = async () => {
+        try {
+            const res = await api.get('/documents/');
+            setDocuments(res.data.documents);
+            // Auto-select all ready documents
+            const readyIds = res.data.documents
+                .filter(d => d.status === 'ready')
+                .map(d => d.id);
+            setSelectedDocIds(readyIds);
+        } catch { /* silently fail */ }
+    };
+
+    // ─── Inline Upload ────────────────────────────────────────
+    const isValidFile = (f) => {
+        const ext = '.' + f.name.split('.').pop().toLowerCase();
+        return ALLOWED_EXTENSIONS.includes(ext);
+    };
+
+    const handleDrop = (e) => {
+        e.preventDefault();
+        setDragging(false);
+        const droppedFile = e.dataTransfer.files[0];
+        if (droppedFile && isValidFile(droppedFile)) {
+            handleUploadFile(droppedFile);
+        } else {
+            toast.error('Unsupported file. Use PDF, DOCX, or TXT');
+        }
+    };
+
+    const handleFileSelect = (e) => {
+        const selectedFile = e.target.files[0];
+        if (selectedFile && isValidFile(selectedFile)) {
+            handleUploadFile(selectedFile);
+        } else if (selectedFile) {
+            toast.error('Unsupported file. Use PDF, DOCX, or TXT');
+        }
+        // Reset input so same file can be selected again
+        e.target.value = '';
+    };
+
+    const handleUploadFile = async (file) => {
+        setUploading(true);
+        setUploadProgress(`Uploading "${file.name}"...`);
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            setUploadProgress(`Processing "${file.name}" — extracting text, chunking, generating embeddings...`);
+            const res = await api.post('/documents/upload', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            });
+
+            // Add to documents list and auto-select
+            setDocuments(prev => [res.data, ...prev]);
+            setSelectedDocIds(prev => [...prev, res.data.id]);
+
+            toast.success(`"${file.name}" uploaded & ready!`);
+
+            // Add a system message to chat
+            setMessages(prev => [...prev, {
+                type: 'ai',
+                text: `✅ **${file.name}** has been uploaded and processed (${res.data.page_count} pages, ${res.data.chunk_count} chunks). You can now ask questions about it!`,
+                sources: [],
+            }]);
+        } catch (err) {
+            toast.error(err.response?.data?.detail || 'Upload failed');
+        } finally {
+            setUploading(false);
+            setUploadProgress('');
+        }
+    };
+
+    // ─── Document Selection ───────────────────────────────────
+    const toggleDocSelection = (docId) => {
+        setSelectedDocIds(prev =>
+            prev.includes(docId)
+                ? prev.filter(id => id !== docId)
+                : [...prev, docId]
+        );
+    };
+
+    const selectAllDocs = () => {
+        const readyIds = documents.filter(d => d.status === 'ready').map(d => d.id);
+        setSelectedDocIds(readyIds);
+    };
+
+    const deselectAllDocs = () => {
+        setSelectedDocIds([]);
+    };
+
+    // ─── Chat Sessions ───────────────────────────────────────
     const fetchSessions = async () => {
         try {
             const res = await api.get('/chat/sessions');
@@ -59,7 +178,7 @@ function QueryPage() {
         setSessionId(null);
         setMessages([{
             type: 'ai',
-            text: "Hello! I'm **Gyan Vault AI**. Ask me anything about your uploaded documents 📚",
+            text: "Hello! I'm **Gyan Vault AI**. Upload a document below and ask me anything about it. 📚",
             sources: [],
         }]);
         setShowHistory(false);
@@ -77,9 +196,15 @@ function QueryPage() {
         }
     };
 
+    // ─── Ask Question ────────────────────────────────────────
     const handleAsk = async (e) => {
         e.preventDefault();
         if (!question.trim() || loading) return;
+
+        if (selectedDocIds.length === 0) {
+            toast.error('Please upload or select at least one document first.');
+            return;
+        }
 
         const userMessage = question.trim();
         setQuestion('');
@@ -87,14 +212,31 @@ function QueryPage() {
         setLoading(true);
 
         try {
-            const payload = { question: userMessage };
+            const payload = {
+                question: userMessage,
+                doc_ids: selectedDocIds,
+            };
             if (sessionId) payload.session_id = sessionId;
 
-            const res = await api.post('/query/ask', payload);
+            let res;
+            if (deepResearch) {
+                // Agentic Search
+                res = await api.post('/agent/research', { query: userMessage });
+            } else {
+                // RAG
+                res = await api.post('/query/ask', payload);
+            }
 
-            if (!sessionId) {
-                setSessionId(res.data.session_id);
-                fetchSessions(); // Refresh session list
+            if (!sessionId && !deepResearch) {
+                // Only create session for standard chat for now (Agent doesn't return session_id yet)
+                // or maybe we don't save agent chats to history?
+                // Let's assume standard behavior for RAG. Agent results are ephemeral or part of current session if backend supported it.
+                // Current endpoints: /query/ask -> returns session_id. /agent/research DOES NOT return session_id.
+                // So if deepResearch, we don't set session ID.
+                if (res.data.session_id) {
+                    setSessionId(res.data.session_id);
+                    fetchSessions();
+                }
             }
 
             setMessages(prev => [...prev, {
@@ -126,6 +268,8 @@ function QueryPage() {
         });
     };
 
+    const readyDocs = documents.filter(d => d.status === 'ready');
+
     return (
         <div className="app-layout">
             <Sidebar />
@@ -134,7 +278,7 @@ function QueryPage() {
                     <div>
                         <h1 className="page-title">Ask AI</h1>
                         <p className="page-subtitle">
-                            {sessionId ? 'Follow-up questions carry context' : 'Start a new conversation'}
+                            {sessionId ? 'Follow-up questions carry context' : 'Upload a document and start asking'}
                         </p>
                     </div>
                     <div className="query-actions">
@@ -186,6 +330,75 @@ function QueryPage() {
 
                     {/* Chat Container */}
                     <div className="chat-container">
+                        {/* ── Inline Document Upload & Selector Bar ── */}
+                        <div className="query-doc-bar">
+                            {/* Upload Zone (compact) */}
+                            <div
+                                className={`query-upload-zone ${dragging ? 'dragging' : ''}`}
+                                onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+                                onDragLeave={() => setDragging(false)}
+                                onDrop={handleDrop}
+                                onClick={() => fileInputRef.current?.click()}
+                            >
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    accept=".pdf,.docx,.txt"
+                                    onChange={handleFileSelect}
+                                    hidden
+                                />
+                                {uploading ? (
+                                    <div className="query-upload-progress">
+                                        <div className="processing-spinner"></div>
+                                        <span>{uploadProgress}</span>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <HiOutlineCloudUpload size={20} />
+                                        <span>Drop PDF / DOCX / TXT here or <strong>click to upload</strong></span>
+                                    </>
+                                )}
+                            </div>
+
+                            {/* Document Chips */}
+                            {readyDocs.length > 0 && (
+                                <div className="query-doc-selector">
+                                    <div className="query-doc-selector-header">
+                                        <span className="query-doc-label">
+                                            <HiOutlineDocumentText size={14} />
+                                            Documents ({selectedDocIds.length}/{readyDocs.length} selected)
+                                        </span>
+                                        <div className="query-doc-toggle-btns">
+                                            <button onClick={selectAllDocs} className="query-doc-toggle">All</button>
+                                            <button onClick={deselectAllDocs} className="query-doc-toggle">None</button>
+                                        </div>
+                                    </div>
+                                    <div className="query-doc-chips">
+                                        {readyDocs.map(doc => (
+                                            <button
+                                                key={doc.id}
+                                                className={`query-doc-chip ${selectedDocIds.includes(doc.id) ? 'selected' : ''}`}
+                                                onClick={() => toggleDocSelection(doc.id)}
+                                                title={doc.original_name}
+                                            >
+                                                {selectedDocIds.includes(doc.id) ? (
+                                                    <HiOutlineCheckCircle size={14} />
+                                                ) : (
+                                                    <HiOutlineDocumentText size={14} />
+                                                )}
+                                                <span className="doc-chip-name">
+                                                    {doc.original_name.length > 25
+                                                        ? doc.original_name.slice(0, 22) + '...'
+                                                        : doc.original_name}
+                                                </span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* ── Chat Messages ── */}
                         <div className="chat-messages">
                             {messages.map((msg, idx) => (
                                 <div key={idx} className={`chat-message ${msg.type}`}>
@@ -193,19 +406,42 @@ function QueryPage() {
                                         {msg.type === 'ai' ? '🤖' : '👤'}
                                     </div>
                                     <div className="message-content">
-                                        <p className="message-text">{renderMessageText(msg.text)}</p>
+                                        <div className="chat-markdown">
+                                            <ReactMarkdown
+                                                remarkPlugins={[remarkGfm]}
+                                                components={{
+                                                    a: ({ node, ...props }) => <a {...props} target="_blank" rel="noopener noreferrer" />
+                                                }}
+                                            >
+                                                {msg.text}
+                                            </ReactMarkdown>
+                                        </div>
                                         {msg.sources && msg.sources.length > 0 && (
                                             <div className="message-sources">
                                                 <p className="sources-label">📖 Sources:</p>
                                                 {msg.sources.map((src, sIdx) => (
                                                     <div key={sIdx} className="source-item">
-                                                        <HiOutlineDocumentText size={14} />
-                                                        <span>Page {src.page_number}</span>
-                                                        <span className="source-preview">{src.text_preview}</span>
+                                                        {src.url ? (
+                                                            // Web Source
+                                                            <a href={src.url} target="_blank" rel="noopener noreferrer" className="web-source-link">
+                                                                <HiOutlineGlobe size={14} />
+                                                                <span>{src.title}</span>
+                                                            </a>
+                                                        ) : (
+                                                            // Document Source
+                                                            <>
+                                                                <HiOutlineDocumentText size={14} />
+                                                                <span>Page {src.page_number}</span>
+                                                                <span className="source-preview">{src.text_preview}</span>
+                                                            </>
+                                                        )}
                                                     </div>
                                                 ))}
                                             </div>
                                         )}
+                                        <span className="message-time">
+                                            {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        </span>
                                     </div>
                                 </div>
                             ))}
@@ -224,20 +460,38 @@ function QueryPage() {
                             <div ref={chatEndRef} />
                         </div>
 
+                        {/* ── Chat Input ── */}
                         <form className="chat-input-area" onSubmit={handleAsk}>
+                            <div className="chat-input-controls">
+                                <button
+                                    type="button"
+                                    className={`deep-research-toggle ${deepResearch ? 'active' : ''}`}
+                                    onClick={() => setDeepResearch(!deepResearch)}
+                                    title={deepResearch ? "Deep Research Mode ON" : "Enable Deep Research"}
+                                >
+                                    <HiOutlineGlobe size={18} />
+                                    <span>Deep Research</span>
+                                </button>
+                            </div>
                             <input
                                 ref={inputRef}
                                 type="text"
                                 className="chat-input"
-                                placeholder="Ask a question about your documents..."
+                                placeholder={
+                                    deepResearch
+                                        ? "Ask a complex question to research on the web..."
+                                        : (selectedDocIds.length === 0
+                                            ? "Upload a document first..."
+                                            : "Ask a question about your documents...")
+                                }
                                 value={question}
                                 onChange={(e) => setQuestion(e.target.value)}
-                                disabled={loading}
+                                disabled={loading || (selectedDocIds.length === 0 && !deepResearch)}
                             />
                             <button
                                 type="submit"
                                 className="chat-send-btn"
-                                disabled={!question.trim() || loading}
+                                disabled={!question.trim() || loading || (selectedDocIds.length === 0 && !deepResearch)}
                             >
                                 <HiOutlinePaperAirplane size={20} />
                             </button>

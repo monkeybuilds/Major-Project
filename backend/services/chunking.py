@@ -16,11 +16,18 @@ def chunk_text(pages: list[str]) -> list[dict]:
     chunks = []
     chunk_index = 0
 
-    for page_num, page_text in enumerate(pages, start=1):
-        page_chunks = splitter.split_text(page_text)
-        for text in page_chunks:
+    for i, page in enumerate(pages):
+        if isinstance(page, dict):
+            text = page.get("text", "")
+            page_num = page.get("page_number", i + 1)
+        else:
+            text = page
+            page_num = i + 1
+
+        page_chunks = splitter.split_text(text)
+        for chunk_text in page_chunks:
             chunks.append({
-                "text": text,
+                "text": chunk_text,
                 "page_number": page_num,
                 "chunk_index": chunk_index,
             })

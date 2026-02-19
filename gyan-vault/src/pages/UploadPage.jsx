@@ -11,6 +11,8 @@ function UploadPage() {
     const [uploading, setUploading] = useState(false);
     const [progress, setProgress] = useState('');
     const [uploadedDoc, setUploadedDoc] = useState(null);
+    const [activeTab, setActiveTab] = useState('file'); // 'file' | 'web'
+    const [url, setUrl] = useState('');
     const fileInputRef = useRef();
     const navigate = useNavigate();
 
@@ -66,6 +68,23 @@ function UploadPage() {
         }
     };
 
+    const handleWebImport = async () => {
+        if (!url.trim()) return;
+        setUploading(true);
+        setProgress('Crawling website content...');
+        try {
+            const res = await api.post('/documents/crawl', { url: url.trim() });
+            setUploadedDoc(res.data);
+            setProgress('');
+            toast.success('Website content imported!');
+        } catch (err) {
+            toast.error(err.response?.data?.detail || 'Import failed');
+            setProgress('');
+        } finally {
+            setUploading(false);
+        }
+    };
+
     const formatFileSize = (bytes) => {
         if (bytes < 1024) return bytes + ' B';
         if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
@@ -83,28 +102,68 @@ function UploadPage() {
 
                 {!uploadedDoc ? (
                     <>
-                        <div
-                            className={`drop-zone ${dragging ? 'drop-zone-active' : ''}`}
-                            onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-                            onDragLeave={() => setDragging(false)}
-                            onDrop={handleDrop}
-                            onClick={() => fileInputRef.current?.click()}
-                        >
-                            <input
-                                type="file"
-                                ref={fileInputRef}
-                                accept=".pdf,.docx,.txt"
-                                onChange={handleFileSelect}
-                                hidden
-                            />
-                            <HiOutlineCloudUpload size={48} className="drop-zone-icon" />
-                            <p className="drop-zone-text">
-                                Drag & drop your file here, or <span className="text-blue-400">browse</span>
-                            </p>
-                            <p className="drop-zone-hint">Supports PDF, DOCX, and TXT files</p>
+                        <div className="upload-tabs-container mb-6 flex space-x-4 border-b border-white/10">
+                            <button
+                                className={`pb-2 px-4 ${activeTab === 'file' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-400 hover:text-white'}`}
+                                onClick={() => setActiveTab('file')}
+                            >
+                                File Upload
+                            </button>
+                            <button
+                                className={`pb-2 px-4 ${activeTab === 'web' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-400 hover:text-white'}`}
+                                onClick={() => setActiveTab('web')}
+                            >
+                                Import from Web
+                            </button>
                         </div>
 
-                        {file && (
+                        {activeTab === 'file' ? (
+                            <div
+                                className={`drop-zone ${dragging ? 'drop-zone-active' : ''}`}
+                                onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+                                onDragLeave={() => setDragging(false)}
+                                onDrop={handleDrop}
+                                onClick={() => fileInputRef.current?.click()}
+                            >
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    accept=".pdf,.docx,.txt"
+                                    onChange={handleFileSelect}
+                                    hidden
+                                />
+                                <HiOutlineCloudUpload size={48} className="drop-zone-icon" />
+                                <p className="drop-zone-text">
+                                    Drag & drop your file here, or <span className="text-blue-400">browse</span>
+                                </p>
+                                <p className="drop-zone-hint">Supports PDF, DOCX, and TXT files</p>
+                            </div>
+                        ) : (
+                            <div className="web-import-card p-6 bg-white/5 rounded-xl border border-white/10">
+                                <label className="block text-sm font-medium mb-2">Website URL</label>
+                                <div className="flex gap-4">
+                                    <input
+                                        type="url"
+                                        className="flex-1 bg-black/20 border border-white/10 rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500 transition-colors"
+                                        placeholder="https://example.com/article"
+                                        value={url}
+                                        onChange={(e) => setUrl(e.target.value)}
+                                    />
+                                    <button
+                                        className="primary-btn whitespace-nowrap"
+                                        onClick={handleWebImport}
+                                        disabled={uploading || !url.trim()}
+                                    >
+                                        {uploading ? 'Crawling...' : 'Import'}
+                                    </button>
+                                </div>
+                                <p className="text-xs text-gray-500 mt-2">
+                                    We'll extract the main text from the page. JavaScript-heavy sites might not be fully captured.
+                                </p>
+                            </div>
+                        )}
+
+                        {activeTab === 'file' && file && (
                             <div className="file-preview">
                                 <div className="file-preview-info">
                                     <HiOutlineDocumentText size={24} className="text-blue-400" />

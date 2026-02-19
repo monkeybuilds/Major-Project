@@ -17,13 +17,21 @@ def _get_llm():
     return _llm
 
 
-def generate_summary(pages: list[str]) -> dict:
+def generate_summary(pages: list) -> dict:
     """
     Generate a summary and extract key tags from document text.
     Returns {'summary': str, 'tags': list[str]}.
     """
+    # Extract text if input is list[dict]
+    text_pages = []
+    for p in pages:
+        if isinstance(p, dict):
+            text_pages.append(p.get("text", ""))
+        else:
+            text_pages.append(p)
+
     # Combine first few pages for context (limit to ~3000 chars)
-    combined = "\n".join(pages)[:3000]
+    combined = "\n".join(text_pages)[:3000]
 
     prompt = f"""Analyze the following document text and provide:
 1. A concise summary in 3-5 sentences that captures the main topics and purpose

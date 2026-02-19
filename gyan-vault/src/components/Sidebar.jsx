@@ -1,9 +1,11 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { HiOutlineHome, HiOutlineCloudUpload, HiOutlineCollection, HiOutlineChatAlt2, HiOutlineLogout } from 'react-icons/hi';
+import { HiOutlineHome, HiOutlineCloudUpload, HiOutlineCollection, HiOutlineChatAlt2, HiOutlineLogout, HiOutlineUser, HiOutlineMoon, HiOutlineSun } from 'react-icons/hi';
+import { useTheme } from '../context/ThemeContext';
 
 function Sidebar() {
     const navigate = useNavigate();
     const user = JSON.parse(localStorage.getItem('gyan_vault_user') || '{}');
+    const { theme, toggleTheme } = useTheme();
 
     const handleLogout = () => {
         localStorage.removeItem('gyan_vault_token');
@@ -16,6 +18,7 @@ function Sidebar() {
         { to: '/upload', label: 'Upload', icon: <HiOutlineCloudUpload size={20} /> },
         { to: '/library', label: 'Library', icon: <HiOutlineCollection size={20} /> },
         { to: '/query', label: 'Ask AI', icon: <HiOutlineChatAlt2 size={20} /> },
+        { to: '/profile', label: 'Profile', icon: <HiOutlineUser size={20} /> },
     ];
 
     return (
@@ -39,6 +42,12 @@ function Sidebar() {
             </nav>
 
             <div className="sidebar-footer">
+                {/* Theme Toggle */}
+                <button className="theme-toggle" onClick={toggleTheme} title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}>
+                    {theme === 'dark' ? <HiOutlineSun size={18} /> : <HiOutlineMoon size={18} />}
+                    <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
+                </button>
+
                 <div className="sidebar-user">
                     <div className="sidebar-avatar">
                         {user.name ? user.name.charAt(0).toUpperCase() : 'U'}

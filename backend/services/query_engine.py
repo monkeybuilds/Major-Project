@@ -1,8 +1,9 @@
 from services.embeddings import generate_single_embedding
-from services.vector_store import search_all_user_docs
+from services.search import HybridRetriever
 from config import GOOGLE_API_KEY, LLM_MODEL_NAME
 
 _llm = None
+_retriever = HybridRetriever()
 
 
 def _get_llm():
@@ -20,18 +21,15 @@ def _get_llm():
         )
     return _llm
 
-
 def ask_question(question: str, doc_ids: list[int], chat_history: list[dict] | None = None) -> dict:
     """
     RAG pipeline with follow-up support:
-    1. Embed the question
-    2. Retrieve relevant chunks
-    3. Include chat history for follow-up context
-    4. Feed to Gemini LLM
-    5. Return answer with sources
+    1. Retrieve relevant chunks using Hybrid Search (Vector + BM25)
+    2. Include chat history for follow-up context
+    3. Feed to Gemini LLM
+    4. Return answer with sources
     """
-    query_embedding = generate_single_embedding(question)
-    results = search_all_user_docs(doc_ids, query_embedding, top_k=5)
+    results = _retriever.search(question, doc_ids, top_k=5)
 
     if not results:
         return {

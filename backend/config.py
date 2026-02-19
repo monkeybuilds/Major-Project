@@ -1,13 +1,18 @@
 import os
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load .env file
+load_dotenv()
 
 # Base directory
 BASE_DIR = Path(__file__).resolve().parent
 
 # Database — PostgreSQL (primary) or SQLite (fallback)
-# To use PostgreSQL: set DATABASE_URL=postgresql://postgres:postgres@localhost:5432/gyan_vault
-# Or install PostgreSQL and the default below will be used
-DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR / 'gyan_vault.db'}")
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "postgresql://postgres:Atharv%40125@localhost:5432/gyan_vault",
+)
 
 # JWT
 SECRET_KEY = os.getenv("SECRET_KEY", "gyan-vault-super-secret-key-change-in-production")
@@ -30,5 +35,5 @@ CHUNK_SIZE = 500
 CHUNK_OVERLAP = 50
 
 # Google Gemini
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", " ")
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
 LLM_MODEL_NAME = "gemini-2.0-flash"

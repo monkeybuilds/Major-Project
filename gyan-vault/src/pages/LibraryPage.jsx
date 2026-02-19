@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
+import { SkeletonCard } from '../components/SkeletonCard';
 import { HiOutlineDocumentText, HiOutlineTrash, HiOutlineClock, HiOutlineCheckCircle, HiOutlineExclamationCircle, HiOutlineChevronDown, HiOutlineChevronUp } from 'react-icons/hi';
 import Sidebar from '../components/Sidebar';
 import api from '../api';
@@ -61,10 +62,16 @@ function LibraryPage() {
                     </p>
                 </div>
 
+
+
                 {loading ? (
-                    <div className="loading-state">
-                        <div className="processing-spinner"></div>
-                        <p>Loading documents...</p>
+                    <div className="documents-grid">
+                        <SkeletonCard lines={3} />
+                        <SkeletonCard lines={3} />
+                        <SkeletonCard lines={3} />
+                        <SkeletonCard lines={3} />
+                        <SkeletonCard lines={3} />
+                        <SkeletonCard lines={3} />
                     </div>
                 ) : documents.length === 0 ? (
                     <div className="empty-state">

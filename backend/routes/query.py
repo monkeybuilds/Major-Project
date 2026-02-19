@@ -95,7 +95,15 @@ def ask(
         )
 
     # Run RAG pipeline with chat history
-    result = ask_question(payload.question, doc_ids, chat_history=chat_history)
+    try:
+        result = ask_question(payload.question, doc_ids, chat_history=chat_history)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"AI query failed: {str(e)}",
+        )
 
     # Save user message
     user_msg = ChatMessage(
