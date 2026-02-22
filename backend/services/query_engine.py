@@ -1,27 +1,12 @@
 from services.embeddings import generate_single_embedding
 from services.search import HybridRetriever
+from services.llm_factory import get_llm
 from config import GOOGLE_API_KEY, LLM_MODEL_NAME
 
-_llm = None
 _retriever = HybridRetriever()
 
 
-def _get_llm():
-    global _llm
-    if _llm is None:
-        if not GOOGLE_API_KEY:
-            raise RuntimeError(
-                "GOOGLE_API_KEY not set. Please set the environment variable to use the query engine."
-            )
-        from langchain_google_genai import ChatGoogleGenerativeAI
-        _llm = ChatGoogleGenerativeAI(
-            model=LLM_MODEL_NAME,
-            google_api_key=GOOGLE_API_KEY,
-            temperature=0.3,
-        )
-    return _llm
-
-def ask_question(question: str, doc_ids: list[int], chat_history: list[dict] | None = None) -> dict:
+def ask_question(question: str, doc_ids: list[int], chat_history: list[dict] | None = None, model_provider: str = "gemini") -> dict:
     """
     RAG pipeline with follow-up support:
     1. Retrieve relevant chunks using Hybrid Search (Vector + BM25)
@@ -80,7 +65,8 @@ Question: {question}
 
 Answer:"""
 
-    llm = _get_llm()
+
+    llm = get_llm(model_provider=model_provider)
     response = llm.invoke(prompt)
 
     return {

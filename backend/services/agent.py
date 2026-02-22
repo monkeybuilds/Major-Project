@@ -1,13 +1,13 @@
 from duckduckgo_search import DDGS
 from services.crawler import scrape_url
-from services.query_engine import _get_llm
+
 from config import LLM_MODEL_NAME
 
 class ResearchAgent:
     def __init__(self):
         self.ddgs = DDGS()
 
-    def research(self, query: str) -> dict:
+    def research(self, query: str, model_provider: str = "gemini") -> dict:
         """
         Perform deep research on a query:
         1. Search web for top results
@@ -47,21 +47,33 @@ class ResearchAgent:
         combined_context = "\n---\n".join(context_parts)
 
         # 3. Synthesize
-        prompt = f"""You are a Research Agent. Answer the user's question based on the web search results below.
-If the results don't fully answer the question, say so.
-Cite sources by their Title or URL.
+        prompt = f"""You are a Deep Internet Research Agent. Answer the user's question based on the web search results below.
+You must be comprehensive, detailed, and write in a professional yet engaging tone.
+If the results don't fully answer the question, say so clearly.
 
-Web Search Results:
+CITE YOUR SOURCES in the text using inline markers like [Source Title] or [1].
+Format your response using beautiful markdown (headings, bullet points, bolding).
+
+Web Search Results Context:
 {combined_context}
 
 Question: {query}
 
 Answer:"""
 
-        llm = _get_llm()
+        from services.llm_factory import get_llm
+        llm = get_llm(model_provider=model_provider) 
         response = llm.invoke(prompt)
         
+        # Ensure sources are unique and formatted correctly for the UI
+        unique_sources = []
+        seen_urls = set()
+        for src in sources:
+            if src['url'] not in seen_urls:
+                seen_urls.add(src['url'])
+                unique_sources.append(src)
+                
         return {
             "answer": response.content,
-            "sources": sources
+            "sources": unique_sources
         }

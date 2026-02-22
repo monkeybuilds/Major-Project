@@ -240,3 +240,31 @@ def delete_document(
     db.commit()
 
     return {"message": "Document deleted successfully"}
+
+
+@router.get("/export")
+def export_data(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Export all user documents and metadata as JSON."""
+    docs = db.query(Document).filter(Document.user_id == current_user.id).all()
+    
+    export_data = []
+    for doc in docs:
+        export_data.append({
+            "id": doc.id,
+            "filename": doc.filename,
+            "original_name": doc.original_name,
+            "upload_date": str(doc.upload_date),
+            "summary": doc.summary,
+            "tags": doc.tags,
+            "type": "web" if doc.original_name.startswith("http") else "file"
+        })
+        
+    return {
+        "version": "1.0",
+        "user_id": current_user.id,
+        "document_count": len(docs),
+        "data": export_data
+    }

@@ -4,6 +4,7 @@ import { SkeletonCard } from '../components/SkeletonCard';
 import { HiOutlineDocumentText, HiOutlineTrash, HiOutlineClock, HiOutlineCheckCircle, HiOutlineExclamationCircle, HiOutlineChevronDown, HiOutlineChevronUp } from 'react-icons/hi';
 import Sidebar from '../components/Sidebar';
 import api from '../api';
+import { motion } from 'framer-motion';
 
 function LibraryPage() {
     const [documents, setDocuments] = useState([]);
@@ -51,8 +52,33 @@ function LibraryPage() {
         });
     };
 
+    const pageVariants = {
+        initial: { opacity: 0, y: 15 },
+        animate: { opacity: 1, y: 0, transition: { duration: 0.5 } },
+        exit: { opacity: 0, scale: 0.98, transition: { duration: 0.3 } }
+    };
+
+    const containerVariants = {
+        hidden: { opacity: 0 },
+        show: {
+            opacity: 1,
+            transition: { staggerChildren: 0.1 }
+        }
+    };
+
+    const itemVariants = {
+        hidden: { opacity: 0, y: 20 },
+        show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
+    };
+
     return (
-        <div className="app-layout">
+        <motion.div
+            className="app-layout"
+            variants={pageVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+        >
             <Sidebar />
             <main className="main-content">
                 <div className="page-header">
@@ -80,9 +106,14 @@ function LibraryPage() {
                         <p>Upload your first file to get started</p>
                     </div>
                 ) : (
-                    <div className="documents-grid">
+                    <motion.div
+                        className="documents-grid"
+                        variants={containerVariants}
+                        initial="hidden"
+                        animate="show"
+                    >
                         {documents.map((doc) => (
-                            <div key={doc.id} className="doc-card">
+                            <motion.div key={doc.id} className="doc-card" variants={itemVariants} whileHover={{ y: -5, boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)" }}>
                                 <div className="doc-card-header">
                                     <div className="doc-card-icon">
                                         <HiOutlineDocumentText size={28} />
@@ -138,17 +169,25 @@ function LibraryPage() {
                                                 : <HiOutlineChevronDown size={16} />
                                             }
                                         </button>
-                                        {expandedDoc === doc.id && (
+                                        {/* Animate summary expansion */}
+                                        <motion.div
+                                            initial={{ height: 0, opacity: 0 }}
+                                            animate={{
+                                                height: expandedDoc === doc.id ? 'auto' : 0,
+                                                opacity: expandedDoc === doc.id ? 1 : 0
+                                            }}
+                                            className="overflow-hidden"
+                                        >
                                             <p className="doc-summary-text">{doc.summary}</p>
-                                        )}
+                                        </motion.div>
                                     </div>
                                 )}
-                            </div>
+                            </motion.div>
                         ))}
-                    </div>
+                    </motion.div>
                 )}
             </main>
-        </div>
+        </motion.div>
     );
 }
 

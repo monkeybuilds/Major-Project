@@ -1,27 +1,12 @@
-from config import GOOGLE_API_KEY, LLM_MODEL_NAME
+from services.llm_factory import get_llm
 
-_llm = None
-
-
-def _get_llm():
-    global _llm
-    if _llm is None:
-        if not GOOGLE_API_KEY:
-            raise RuntimeError("GOOGLE_API_KEY not set.")
-        from langchain_google_genai import ChatGoogleGenerativeAI
-        _llm = ChatGoogleGenerativeAI(
-            model=LLM_MODEL_NAME,
-            google_api_key=GOOGLE_API_KEY,
-            temperature=0.3,
-        )
-    return _llm
-
-
-def generate_summary(pages: list) -> dict:
+def generate_summary(pages: list, model_provider: str = "ollama") -> dict:
     """
     Generate a summary and extract key tags from document text.
     Returns {'summary': str, 'tags': list[str]}.
     """
+    # ...
+
     # Extract text if input is list[dict]
     text_pages = []
     for p in pages:
@@ -44,7 +29,7 @@ TAGS: tag1, tag2, tag3, tag4, tag5
 Document text:
 {combined}"""
 
-    llm = _get_llm()
+    llm = get_llm(model_provider=model_provider)
     response = llm.invoke(prompt)
     content = response.content
 

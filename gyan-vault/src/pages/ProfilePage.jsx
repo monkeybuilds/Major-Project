@@ -10,10 +10,13 @@ import {
     HiOutlineCalendar,
     HiOutlinePencil,
     HiOutlineCheck,
+
     HiOutlineX,
+    HiOutlineChip,
 } from 'react-icons/hi';
 import Sidebar from '../components/Sidebar';
 import api from '../api';
+import { motion } from 'framer-motion';
 
 function ProfilePage() {
     const [user, setUser] = useState(() => {
@@ -38,6 +41,11 @@ function ProfilePage() {
     });
     const [savingName, setSavingName] = useState(false);
     const [savingPassword, setSavingPassword] = useState(false);
+
+    // Model Preference
+    const [preferredModel, setPreferredModel] = useState(() => {
+        return localStorage.getItem('gyan_vault_model') || 'gemini';
+    });
 
     const [error, setError] = useState(null);
 
@@ -126,6 +134,13 @@ function ProfilePage() {
 
 
 
+    const handleModelChange = (e) => {
+        const model = e.target.value;
+        setPreferredModel(model);
+        localStorage.setItem('gyan_vault_model', model);
+        toast.success(`Model switched to ${model === 'gemini' ? 'Gemini' : model === 'openai' ? 'GPT-4o' : model === 'ollama' ? 'Ollama (Local)' : 'Claude 3.5'}`);
+    };
+
     const formatDate = (dateStr) => {
         if (!dateStr || dateStr === 'None') return '—';
         try {
@@ -139,8 +154,20 @@ function ProfilePage() {
         }
     };
 
+    const pageVariants = {
+        initial: { opacity: 0, y: 15 },
+        animate: { opacity: 1, y: 0, transition: { duration: 0.5 } },
+        exit: { opacity: 0, scale: 0.98, transition: { duration: 0.3 } }
+    };
+
     return (
-        <div className="app-layout">
+        <motion.div
+            className="app-layout"
+            variants={pageVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+        >
             <Sidebar />
             <main className="main-content">
                 <ErrorBoundary>
@@ -303,6 +330,31 @@ function ProfilePage() {
                                 )}
                             </div>
 
+                            {/* Model Settings */}
+                            <div className="profile-card">
+                                <h3 className="profile-card-title">
+                                    <HiOutlineChip size={20} />
+                                    AI Model Preference
+                                </h3>
+                                <div className="profile-field">
+                                    <label className="profile-label">Preferred LLM Provider</label>
+                                    <select
+                                        className="input-field"
+                                        value={preferredModel}
+                                        onChange={handleModelChange}
+                                        style={{ background: 'rgba(255,255,255,0.05)', color: 'white', border: '1px solid rgba(255,255,255,0.1)' }}
+                                    >
+                                        <option value="gemini">Google Gemini (Fast & Free)</option>
+                                        <option value="openai">OpenAI GPT-4o (Smartest)</option>
+                                        <option value="anthropic">Anthropic Claude 3.5 (Best Writer)</option>
+                                        <option value="ollama">Local (Ollama) 🦙 (Private & Offline)</option>
+                                    </select>
+                                    <p className="profile-shortcuts-hint" style={{ marginTop: '0.5rem' }}>
+                                        Note: OpenAI and Anthropic require API keys set in the backend server.
+                                    </p>
+                                </div>
+                            </div>
+
                             {/* Keyboard Shortcuts Info */}
                             <div className="profile-card">
                                 <h3 className="profile-card-title">⌨️ Keyboard Shortcuts</h3>
@@ -319,7 +371,7 @@ function ProfilePage() {
                     ) : null}
                 </ErrorBoundary>
             </main>
-        </div>
+        </motion.div>
     );
 }
 

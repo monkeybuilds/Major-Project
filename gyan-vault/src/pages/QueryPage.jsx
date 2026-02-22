@@ -16,6 +16,7 @@ import {
 } from 'react-icons/hi';
 import Sidebar from '../components/Sidebar';
 import api from '../api';
+import { motion } from 'framer-motion';
 
 function QueryPage() {
     const [messages, setMessages] = useState([
@@ -212,18 +213,24 @@ function QueryPage() {
         setLoading(true);
 
         try {
-            const payload = {
-                question: userMessage,
-                doc_ids: selectedDocIds,
-            };
-            if (sessionId) payload.session_id = sessionId;
+            const modelProvider = localStorage.getItem('gyan_vault_model') || 'gemini';
 
             let res;
             if (deepResearch) {
                 // Agentic Search
-                res = await api.post('/agent/research', { query: userMessage });
+                res = await api.post('/agent/research', {
+                    query: userMessage,
+                    model_provider: modelProvider
+                });
             } else {
                 // RAG
+                const payload = {
+                    question: userMessage,
+                    doc_ids: selectedDocIds,
+                    model_provider: modelProvider
+                };
+                if (sessionId) payload.session_id = sessionId;
+
                 res = await api.post('/query/ask', payload);
             }
 
@@ -270,8 +277,20 @@ function QueryPage() {
 
     const readyDocs = documents.filter(d => d.status === 'ready');
 
+    const pageVariants = {
+        initial: { opacity: 0, y: 15 },
+        animate: { opacity: 1, y: 0, transition: { duration: 0.5 } },
+        exit: { opacity: 0, scale: 0.98, transition: { duration: 0.3 } }
+    };
+
     return (
-        <div className="app-layout">
+        <motion.div
+            className="app-layout"
+            variants={pageVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+        >
             <Sidebar />
             <main className="main-content query-page">
                 <div className="page-header query-header">
@@ -401,7 +420,13 @@ function QueryPage() {
                         {/* ── Chat Messages ── */}
                         <div className="chat-messages">
                             {messages.map((msg, idx) => (
-                                <div key={idx} className={`chat-message ${msg.type}`}>
+                                <motion.div
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ duration: 0.3, delay: 0.05 }}
+                                    key={idx}
+                                    className={`chat-message ${msg.type}`}
+                                >
                                     <div className="message-avatar">
                                         {msg.type === 'ai' ? '🤖' : '👤'}
                                     </div>
@@ -443,7 +468,7 @@ function QueryPage() {
                                             {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                         </span>
                                     </div>
-                                </div>
+                                </motion.div>
                             ))}
 
                             {loading && (
@@ -499,7 +524,7 @@ function QueryPage() {
                     </div>
                 </div>
             </main>
-        </div>
+        </motion.div>
     );
 }
 

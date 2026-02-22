@@ -30,6 +30,7 @@ class ActivityItem(BaseModel):
 
 class ActivityResponse(BaseModel):
     recent_activity: list[ActivityItem]
+    chart_data: list[dict] = []
 
 
 # ---------- Routes ----------
@@ -70,13 +71,13 @@ def get_activity(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Get recent activity (uploads and queries)."""
+    """Get recent activity (uploads and queries) and grouped time-series data."""
     activity = []
 
     # Recent uploads
     recent_docs = db.query(Document).filter(
         Document.user_id == current_user.id
-    ).order_by(Document.upload_date.desc()).limit(10).all()
+    ).order_by(Document.upload_date.desc()).all()
 
     for doc in recent_docs:
         activity.append(ActivityItem(
@@ -89,7 +90,7 @@ def get_activity(
     recent_queries = db.query(ChatMessage).join(ChatSession).filter(
         ChatSession.user_id == current_user.id,
         ChatMessage.role == "user",
-    ).order_by(ChatMessage.created_at.desc()).limit(10).all()
+    ).order_by(ChatMessage.created_at.desc()).all()
 
     for msg in recent_queries:
         activity.append(ActivityItem(
@@ -97,7 +98,42 @@ def get_activity(
             title=f"Asked: {msg.content[:60]}..." if len(msg.content) > 60 else f"Asked: {msg.content}",
             date=str(msg.created_at),
         ))
+        
+    # Group by date for charts
+    from collections import defaultdict
+    import datetime
 
-    # Sort by date descending
+    daily_stats = defaultdict(lambda: {"date": "", "queries": 0, "uploads": 0})
+    for item in activity:
+        try:
+             # Parse '2024-05-12 10:20:30' or '2024-05-12T10:20:30' into YYYY-MM-DD
+             date_str = item.date.split(' ')[0].split('T')[0]
+             daily_stats[date_str]["date"] = date_str
+             if item.type == "query":
+                 daily_stats[date_str]["queries"] += 1
+             else:
+                 daily_stats[date_str]["uploads"] += 1
+        except Exception:
+             continue
+             
+    # Fill in empty dates for a smoother chart (last 7 days)
+    chart_data = []
+    today = datetime.datetime.now().date()
+    for i in range(6, -1, -1):
+        d = today - datetime.timedelta(days=i)
+        d_str = d.strftime("%Y-%m-%d")
+        if d_str in daily_stats:
+            chart_data.append(daily_stats[d_str])
+        else:
+            chart_data.append({"date": d_str, "queries": 0, "uploads": 0})
+
+    # Sort recent activity by date descending for the feed
     activity.sort(key=lambda x: x.date, reverse=True)
-    return ActivityResponse(recent_activity=activity[:15])
+    
+    # Return both the feed and the chart data using a dynamic dictionary structure
+    # since we are modifying the return type implicitly here. We should technically 
+    # update the schema, but FastAPI handles dict returns well if not strict.
+    return {
+        "recent_activity": [item.dict() for item in activity[:15]],
+        "chart_data": chart_data
+    }

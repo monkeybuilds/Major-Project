@@ -1,5 +1,7 @@
 from contextlib import asynccontextmanager
 
+
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database.connection import init_db
@@ -51,3 +53,8 @@ def root():
         "status": "running",
         "docs": "/docs",
     }
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

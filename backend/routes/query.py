@@ -16,8 +16,9 @@ router = APIRouter(prefix="/query", tags=["Query"])
 
 class QueryRequest(BaseModel):
     question: str
-    doc_ids: list[int] | None = None
-    session_id: int | None = None  # For follow-up questions
+    doc_ids: list[int]
+    session_id: int | None = None
+    model_provider: str = "gemini"  # For follow-up questions
 
 
 class SourceInfo(BaseModel):
@@ -96,7 +97,12 @@ def ask(
 
     # Run RAG pipeline with chat history
     try:
-        result = ask_question(payload.question, doc_ids, chat_history=chat_history)
+        result = ask_question(
+            payload.question,
+            doc_ids,
+            chat_history=chat_history,
+            model_provider=payload.model_provider
+        )
     except Exception as e:
         import traceback
         traceback.print_exc()

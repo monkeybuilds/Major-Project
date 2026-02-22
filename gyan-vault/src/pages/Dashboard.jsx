@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { HiOutlineDocumentText, HiOutlineCloudUpload, HiOutlineChatAlt2, HiOutlineCollection, HiOutlineChartBar, HiOutlineDocumentSearch } from 'react-icons/hi';
 import Sidebar from '../components/Sidebar';
 import api from '../api';
+import { motion } from 'framer-motion';
 
 import { SkeletonStat } from '../components/SkeletonCard';
 
@@ -72,8 +73,20 @@ function Dashboard() {
         } catch { return dateStr; }
     };
 
+    const pageVariants = {
+        initial: { opacity: 0, y: 15 },
+        animate: { opacity: 1, y: 0, transition: { duration: 0.5 } },
+        exit: { opacity: 0, scale: 0.98, transition: { duration: 0.3 } }
+    };
+
     return (
-        <div className="app-layout">
+        <motion.div
+            className="app-layout"
+            variants={pageVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+        >
             <Sidebar />
             <main className="main-content">
                 {/* Welcome */}
@@ -172,7 +185,7 @@ function Dashboard() {
                     </>
                 )}
             </main>
-        </div>
+        </motion.div>
     );
 }
 

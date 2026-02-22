@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { HiOutlineHome, HiOutlineCloudUpload, HiOutlineCollection, HiOutlineChatAlt2, HiOutlineLogout, HiOutlineUser, HiOutlineMoon, HiOutlineSun } from 'react-icons/hi';
+import { HiOutlineHome, HiOutlineCloudUpload, HiOutlineCollection, HiOutlineChatAlt2, HiOutlineLogout, HiOutlineUser, HiOutlineMoon, HiOutlineSun, HiOutlineChartBar } from 'react-icons/hi';
 import { useTheme } from '../context/ThemeContext';
 
 function Sidebar() {
@@ -18,6 +18,8 @@ function Sidebar() {
         { to: '/upload', label: 'Upload', icon: <HiOutlineCloudUpload size={20} /> },
         { to: '/library', label: 'Library', icon: <HiOutlineCollection size={20} /> },
         { to: '/query', label: 'Ask AI', icon: <HiOutlineChatAlt2 size={20} /> },
+        { to: '/research', label: 'Deep Research', icon: <HiOutlineSun size={20} /> }, // Using Sun icon as a placeholder since we don't have HiOutlineCpu
+        { to: '/analytics', label: 'Analytics', icon: <HiOutlineChartBar size={20} /> },
         { to: '/profile', label: 'Profile', icon: <HiOutlineUser size={20} /> },
     ];
 

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import api from '../api';
+import { motion } from 'framer-motion';
 
 function AuthPage() {
     const [isLogin, setIsLogin] = useState(true);
@@ -64,9 +65,21 @@ function AuthPage() {
         setIsLogin(true);
     };
 
+    const pageVariants = {
+        initial: { opacity: 0, scale: 0.95 },
+        animate: { opacity: 1, scale: 1, transition: { duration: 0.5, type: "spring", stiffness: 200, damping: 20 } },
+        exit: { opacity: 0, scale: 0.95, transition: { duration: 0.3 } }
+    };
+
     return (
-        <div className="min-h-screen flex items-center justify-center px-4">
-            <div className="auth-card p-10 w-full max-w-md">
+        <div className="min-h-screen flex items-center justify-center px-4 relative z-10">
+            <motion.div
+                className="auth-card p-10 w-full max-w-md bg-surface/80 backdrop-blur-xl border border-border shadow-2xl"
+                variants={pageVariants}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+            >
                 <div className="text-center mb-8">
                     <h1 className="text-3xl font-extrabold text-white tracking-wide">
                         📚 Gyan Vault
@@ -175,7 +188,7 @@ function AuthPage() {
                         </p>
                     </form>
                 )}
-            </div>
+            </motion.div>
         </div>
     );
 }

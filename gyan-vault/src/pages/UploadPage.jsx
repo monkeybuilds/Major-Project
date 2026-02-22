@@ -4,6 +4,7 @@ import { toast } from 'react-hot-toast';
 import { HiOutlineCloudUpload, HiOutlineDocumentText, HiOutlineCheckCircle } from 'react-icons/hi';
 import Sidebar from '../components/Sidebar';
 import api from '../api';
+import { motion } from 'framer-motion';
 
 function UploadPage() {
     const [file, setFile] = useState(null);
@@ -91,8 +92,20 @@ function UploadPage() {
         return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
     };
 
+    const pageVariants = {
+        initial: { opacity: 0, y: 15 },
+        animate: { opacity: 1, y: 0, transition: { duration: 0.5 } },
+        exit: { opacity: 0, scale: 0.98, transition: { duration: 0.3 } }
+    };
+
     return (
-        <div className="app-layout">
+        <motion.div
+            className="app-layout"
+            variants={pageVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+        >
             <Sidebar />
             <main className="main-content">
                 <div className="page-header">
@@ -232,7 +245,7 @@ function UploadPage() {
                     </div>
                 )}
             </main>
-        </div>
+        </motion.div>
     );
 }
 

@@ -1,0 +1,6 @@
+Starting diagnosis
+Importing agent...
+Agent OK
+Importing llm_factory...
+LLM Factory OK
+Finished
