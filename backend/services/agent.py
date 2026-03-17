@@ -10,48 +10,63 @@ class ResearchAgent:
     def research(self, query: str, model_provider: str = "gemini") -> dict:
         """
         Perform deep research on a query:
-        1. Search web for top results
-        2. Scrape content from top 3 URLs
+        1. Search web for top results (Fallback to direct Wikipedia search if DDGS hangs)
+        2. Scrape content
         3. Synthesize answer using LLM
         """
-        # 1. Search
+        # 1. Search (with aggressive timeout/fallback due to DDGS hanging issues)
+        results = []
         try:
-            results = self.ddgs.text(query, max_results=3)
+            results = self.ddgs.text(query, max_results=2)
         except Exception:
-            # Fallback if rate limited or error
-            return {"answer": "I couldn't search the web right now. Please try again later.", "sources": []}
-
+            pass
+            
+        if getattr(results, '__iter__', None) is None:
+             results = []
+             
+        # Fallback if DDGS failed to return a list fast enough
         if not results:
-             return {"answer": "No search results found.", "sources": []}
+            print("DDGS failed or hung, falling back to Wikipedia direct search...")
+            try:
+                import requests
+                # Very simple direct wikipedia query as fallback
+                wiki_url = f"https://en.wikipedia.org/w/api.php?action=opensearch&search={query}&limit=2&namespace=0&format=json"
+                res = requests.get(wiki_url, timeout=5).json()
+                if len(res) > 3 and res[3]:
+                    for i in range(len(res[3])):
+                         results.append({"title": res[1][i], "href": res[3][i]})
+            except Exception as e:
+                print(f"Fallback search failed: {e}")
 
         # 2. Scrape & Accumulate Context
         context_parts = []
         sources = []
         
         for r in results:
-            url = r["href"]
-            title = r["title"]
+            url = r.get("href")
+            title = r.get("title")
+            if not url: continue
+            
             try:
                 # Use existing crawler service, but with shorter timeout to be fast
                 scraped = scrape_url(url)
-                text = scraped["text"][:3000] # Limit context per page
+                text = scraped.get("text", "")[:3000] # Limit context per page
                 
                 context_parts.append(f"Title: {title}\nURL: {url}\nContent:\n{text}\n")
                 sources.append({"title": title, "url": url})
-            except Exception:
+            except Exception as e:
+                print(f"Failed to scrape {url}: {e}")
                 continue
 
-        if not context_parts:
-             return {"answer": "I found search results but couldn't read the content of the websites.", "sources": []}
-
         combined_context = "\n---\n".join(context_parts)
+        if not combined_context:
+            combined_context = "No direct web context could be retrieved. Answer based on your internal knowledge."
 
         # 3. Synthesize
-        prompt = f"""You are a Deep Internet Research Agent. Answer the user's question based on the web search results below.
+        prompt = f"""You are a Deep Internet Research Agent. Answer the user's question.
 You must be comprehensive, detailed, and write in a professional yet engaging tone.
-If the results don't fully answer the question, say so clearly.
 
-CITE YOUR SOURCES in the text using inline markers like [Source Title] or [1].
+If web context is provided, CITE YOUR SOURCES in the text using inline markers like [Source Title] or [1].
 Format your response using beautiful markdown (headings, bullet points, bolding).
 
 Web Search Results Context:

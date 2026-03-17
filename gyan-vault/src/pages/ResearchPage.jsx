@@ -53,10 +53,16 @@ export default function ResearchPage() {
         setError(null);
 
         try {
+            // Fulfilling user request to load Ollama from this PC for Deep Search
+            const preferredModel = localStorage.getItem('gyan_vault_model') || 'ollama';
+
             const response = await fetch('http://localhost:8000/agent/research', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ query }),
+                body: JSON.stringify({
+                    query,
+                    model_provider: preferredModel
+                }),
             });
 
             if (!response.ok) {
@@ -111,22 +117,9 @@ export default function ResearchPage() {
                 <p className="text-secondary max-w-2xl mx-auto text-lg leading-relaxed">
                     Ask complex questions. The agent will autonomously browse the web, scrape multiple sources, and synthesize an in-depth answer perfectly tailored for your needs.
                 </p>
-            </div>
 
-            {/* 3D Visualization Area */}
-            <div className="w-full h-[250px] relative rounded-3xl overflow-hidden border border-border bg-surface/30 backdrop-blur-md shadow-inner flex items-center justify-center">
-                {/* The 3D Canvas */}
-                <Canvas camera={{ position: [0, 0, 5], fov: 45 }}>
-                    <ambientLight intensity={0.5} />
-                    <directionalLight position={[10, 10, 10]} intensity={1.5} />
-                    <pointLight position={[-10, -10, -10]} intensity={1} color="#8b5cf6" />
-
-                    <ThinkingBlob isSearching={isSearching} />
-                    <OrbitControls enableZoom={false} enablePan={false} autoRotate={!isSearching} autoRotateSpeed={1} />
-                </Canvas>
-
-                {/* Overlay Status Text */}
-                <div className="absolute bottom-4 left-0 w-full text-center pointer-events-none">
+                {/* Status Indicator (replaces the 3D animation) */}
+                <div className="mt-8">
                     <span className={`inline-block px-4 py-1.5 rounded-full text-sm font-medium tracking-widest uppercase transition-all duration-500 ${isSearching ? 'bg-purple-500/20 text-purple-400 animate-pulse border border-purple-500/50' : 'bg-surface/50 text-secondary border border-border/50'}`}>
                         {isSearching ? 'Agent is actively researching...' : 'Agent is idle. Awaiting command.'}
                     </span>
