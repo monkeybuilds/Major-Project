@@ -1,7 +1,7 @@
 from services.embeddings import generate_single_embedding
 from services.search import HybridRetriever
 from services.llm_factory import get_llm
-from config import GOOGLE_API_KEY, LLM_MODEL_NAME
+from config import LLM_MODEL_NAME
 
 _retriever = HybridRetriever()
 

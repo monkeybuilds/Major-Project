@@ -10,7 +10,6 @@ import {
     HiOutlineCalendar,
     HiOutlinePencil,
     HiOutlineCheck,
-
     HiOutlineX,
     HiOutlineChip,
 } from 'react-icons/hi';
@@ -138,7 +137,7 @@ function ProfilePage() {
         const model = e.target.value;
         setPreferredModel(model);
         localStorage.setItem('gyan_vault_model', model);
-        toast.success(`Model switched to ${model === 'gemini' ? 'Gemini' : model === 'openai' ? 'GPT-4o' : model === 'ollama' ? 'Ollama (Local)' : 'Claude 3.5'}`);
+        toast.success(`Model switched to ${model === 'ollama' ? 'Local Ollama' : model}`);
     };
 
     const formatDate = (dateStr) => {
@@ -339,18 +338,14 @@ function ProfilePage() {
                                 <div className="profile-field">
                                     <label className="profile-label">Preferred LLM Provider</label>
                                     <select
-                                        className="input-field"
-                                        value={preferredModel}
-                                        onChange={handleModelChange}
-                                        style={{ background: 'rgba(255,255,255,0.05)', color: 'white', border: '1px solid rgba(255,255,255,0.1)' }}
+                                        className="profile-select"
+                                        value="ollama"
+                                        disabled
                                     >
-                                        <option value="gemini">Google Gemini (Fast & Free)</option>
-                                        <option value="openai">OpenAI GPT-4o (Smartest)</option>
-                                        <option value="anthropic">Anthropic Claude 3.5 (Best Writer)</option>
-                                        <option value="ollama">Local (Ollama) 🦙 (Private & Offline)</option>
+                                        <option value="ollama">Local System (Ollama phi3 / llama3)</option>
                                     </select>
-                                    <p className="profile-shortcuts-hint" style={{ marginTop: '0.5rem' }}>
-                                        Note: OpenAI and Anthropic require API keys set in the backend server.
+                                    <p className="profile-shortcuts-hint" style={{ marginTop: '0.5rem', color: '#10b981' }}>
+                                        ✓ Running 100% Offline (Free & Private)
                                     </p>
                                 </div>
                             </div>

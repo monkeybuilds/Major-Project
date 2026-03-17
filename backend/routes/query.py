@@ -18,7 +18,7 @@ class QueryRequest(BaseModel):
     question: str
     doc_ids: list[int]
     session_id: int | None = None
-    model_provider: str = "gemini"  # For follow-up questions
+    model_provider: str = "ollama"  # For follow-up questions
 
 
 class SourceInfo(BaseModel):
@@ -104,8 +104,6 @@ def ask(
             model_provider=payload.model_provider
         )
     except Exception as e:
-        import traceback
-        traceback.print_exc()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"AI query failed: {str(e)}",

@@ -167,10 +167,7 @@ def crawl_website(
         db.commit()
         db.refresh(doc)
         
-        # Process (Chunk -> Embed -> Store)
-        # Wrap content as a single page or split? crawler returns full text.
-        # file_extractor.extract_text usually returns list of pages.
-        # We can simulate pages if we want, or just 1 page.
+        # Process (Chunk → Embed → Store)
         pages = [{"text": content, "page_number": 1}]
         chunks = chunk_text(pages)
         
@@ -183,7 +180,7 @@ def crawl_website(
             summary_data = generate_summary(pages)
             doc.summary = summary_data["summary"]
             doc.tags = "website, " + ", ".join(summary_data["tags"])
-        except:
+        except Exception:
             doc.summary = f"Content from {title}"
             
         doc.page_count = 1
@@ -197,8 +194,6 @@ def crawl_website(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        import traceback
-        traceback.print_exc()
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Crawling failed: {str(e)}")
 

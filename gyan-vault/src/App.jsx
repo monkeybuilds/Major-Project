@@ -9,15 +9,13 @@ import UploadPage from './pages/UploadPage';
 import LibraryPage from './pages/LibraryPage';
 import QueryPage from './pages/QueryPage';
 import ProfilePage from './pages/ProfilePage';
-import ResearchPage from './pages/ResearchPage'; // NEW
-import AnalyticsPage from './pages/AnalyticsPage'; // NEW
+import PdfToolsPage from './pages/PdfToolsPage';
+import AnalyticsPage from './pages/AnalyticsPage';
 
 import ProtectedRoute from './components/ProtectedRoute';
 import KeyboardShortcuts from './components/KeyboardShortcuts';
-import Background3D from './components/Background3D'; // NEW
 import './App.css';
 
-// We need an inner component to use useLocation
 function LocationAnimatedRoutes() {
   const location = useLocation();
 
@@ -30,7 +28,7 @@ function LocationAnimatedRoutes() {
         <Route path="/library" element={<ProtectedRoute><LibraryPage /></ProtectedRoute>} />
         <Route path="/query" element={<ProtectedRoute><QueryPage /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
-        <Route path="/research" element={<ProtectedRoute><ResearchPage /></ProtectedRoute>} />
+        <Route path="/tools" element={<ProtectedRoute><PdfToolsPage /></ProtectedRoute>} />
         <Route path="/analytics" element={<ProtectedRoute><AnalyticsPage /></ProtectedRoute>} />
       </Routes>
     </AnimatePresence>
@@ -40,9 +38,6 @@ function LocationAnimatedRoutes() {
 function App() {
   return (
     <ThemeProvider>
-      {/* Background is placed behind everything. Canvas creates its own stacking context */}
-      <Background3D />
-
       <BrowserRouter>
         <Toaster
           position="top-right"
@@ -58,11 +53,7 @@ function App() {
           }}
         />
         <KeyboardShortcuts />
-
-        {/* The AnimatedRoutes handler */}
-        <div className="relative z-[1] w-full min-h-screen pt-16 sm:pt-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-          <LocationAnimatedRoutes />
-        </div>
+        <LocationAnimatedRoutes />
       </BrowserRouter>
     </ThemeProvider>
   );

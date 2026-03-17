@@ -1,204 +1,180 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
-    LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
-    BarChart, Bar, Legend
-} from 'recharts';
-import { HiOutlineChartBar, HiOutlineTrendingUp, HiOutlineDocumentReport, HiOutlineChatAlt2 } from 'react-icons/hi';
-import { toast } from 'react-hot-toast';
+    HiOutlineChartBar,
+    HiOutlineDocumentText,
+    HiOutlineChatAlt2,
+    HiOutlineCollection,
+    HiOutlineLightningBolt,
+    HiOutlineClock,
+    HiOutlineCloudUpload
+} from 'react-icons/hi';
 import Sidebar from '../components/Sidebar';
 import api from '../api';
 
-export default function AnalyticsPage() {
+function AnalyticsPage() {
     const [stats, setStats] = useState(null);
-    const [chartData, setChartData] = useState([]);
+    const [activity, setActivity] = useState({ recent_activity: [], chart_data: [] });
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const loadData = async () => {
+        const fetchAnalytics = async () => {
             try {
                 const [statsRes, activityRes] = await Promise.all([
                     api.get('/analytics/stats'),
                     api.get('/analytics/activity')
                 ]);
                 setStats(statsRes.data);
-                // Chart data from our updated backend endpoint
-                setChartData(activityRes.data.chart_data || []);
+                setActivity(activityRes.data);
             } catch (err) {
-                toast.error('Failed to load analytics data');
+                console.error("Failed to load analytics", err);
             } finally {
                 setLoading(false);
             }
         };
-        loadData();
+
+        fetchAnalytics();
     }, []);
 
-    // Framer Motion variants
     const pageVariants = {
         initial: { opacity: 0, y: 15 },
         animate: { opacity: 1, y: 0, transition: { duration: 0.5 } },
         exit: { opacity: 0, scale: 0.98, transition: { duration: 0.3 } }
     };
 
-    const containerVariants = {
-        hidden: { opacity: 0 },
-        show: { opacity: 1, transition: { staggerChildren: 0.1 } }
-    };
-
-    const itemVariants = {
-        hidden: { opacity: 0, y: 20 },
-        show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
-    };
-
-    // Custom Tooltip for Recharts to match our premium aesthetic
-    const CustomTooltip = ({ active, payload, label }) => {
-        if (active && payload && payload.length) {
-            return (
-                <div className="bg-surface/90 backdrop-blur-md border border-border p-4 rounded-xl shadow-xl">
-                    <p className="font-semibold mb-2 text-text-primary">{label}</p>
-                    {payload.map((entry, index) => (
-                        <div key={index} className="flex items-center gap-2 text-sm" style={{ color: entry.color }}>
-                            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
-                            <span>{entry.name}:</span>
-                            <span className="font-medium">{entry.value}</span>
-                        </div>
-                    ))}
-                </div>
-            );
-        }
-        return null;
-    };
+    if (loading) {
+        return (
+            <div className="app-layout">
+                <Sidebar />
+                <main className="main-content flex-center">
+                    <div className="loader"></div>
+                </main>
+            </div>
+        );
+    }
 
     return (
-        <motion.div
-            className="app-layout"
-            variants={pageVariants}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-        >
+        <motion.div className="app-layout" variants={pageVariants} initial="initial" animate="animate" exit="exit">
             <Sidebar />
             <main className="main-content">
                 <div className="page-header">
-                    <h1 className="page-title flex items-center gap-3">
-                        <HiOutlineChartBar className="text-primary" />
-                        Analytics Insights
-                    </h1>
-                    <p className="page-subtitle">Track your knowledge base growth and AI interactions over time.</p>
+                    <h1 className="page-title">Analytics</h1>
+                    <p className="page-subtitle">Track your knowledge base usage and activity</p>
                 </div>
 
-                {loading ? (
-                    <div className="flex items-center justify-center h-64">
-                        <div className="processing-spinner"></div>
-                    </div>
-                ) : (
-                    <motion.div
-                        className="space-y-8 max-w-6xl mx-auto pb-12"
-                        variants={containerVariants}
-                        initial="hidden"
-                        animate="show"
-                    >
-                        {/* Summary KPI Cards */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                            {[
-                                { title: 'Total Documents', value: stats?.total_documents || 0, icon: HiOutlineDocumentReport, color: 'text-blue-500', bg: 'bg-blue-500/10' },
-                                { title: 'Queries Asked', value: stats?.total_queries || 0, icon: HiOutlineChatAlt2, color: 'text-purple-500', bg: 'bg-purple-500/10' },
-                                { title: 'Chat Sessions', value: stats?.total_chat_sessions || 0, icon: HiOutlineTrendingUp, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-                                { title: 'Pages Processed', value: stats?.total_pages || 0, icon: HiOutlineChartBar, color: 'text-amber-500', bg: 'bg-amber-500/10' },
-                            ].map((kpi, i) => (
-                                <motion.div
-                                    key={i}
-                                    variants={itemVariants}
-                                    whileHover={{ y: -5, scale: 1.02 }}
-                                    className="p-6 bg-surface/60 backdrop-blur-sm border border-border rounded-3xl shadow-lg flex items-center gap-4 group transition-all duration-300"
-                                >
-                                    <div className={`p-4 rounded-2xl ${kpi.bg}`}>
-                                        <kpi.icon size={28} className={kpi.color} />
-                                    </div>
-                                    <div>
-                                        <p className="text-secondary text-sm font-medium mb-1">{kpi.title}</p>
-                                        <p className="text-3xl font-bold bg-gradient-to-br from-text-primary to-secondary bg-clip-text text-transparent group-hover:scale-110 transition-transform origin-left">
-                                            {kpi.value}
-                                        </p>
-                                    </div>
-                                </motion.div>
-                            ))}
+                {/* ── Stats Grid ── */}
+                <div className="dashboard-stats" style={{ marginBottom: '2rem' }}>
+                    <div className="stat-card">
+                        <div className="stat-icon" style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#60a5fa' }}>
+                            <HiOutlineCollection size={24} />
                         </div>
+                        <div className="stat-info">
+                            <h3>{stats?.total_documents || 0}</h3>
+                            <p>Total Documents</p>
+                        </div>
+                    </div>
 
-                        {/* Charts Area */}
-                        {chartData && chartData.length > 0 ? (
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div className="stat-card">
+                        <div className="stat-icon" style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#fbbf24' }}>
+                            <HiOutlineDocumentText size={24} />
+                        </div>
+                        <div className="stat-info">
+                            <h3>{stats?.total_pages || 0}</h3>
+                            <p>Total Pages Indexed</p>
+                        </div>
+                    </div>
 
-                                {/* Line Chart: Activity over Time */}
-                                <motion.div variants={itemVariants} className="p-6 sm:p-8 bg-surface/80 backdrop-blur-xl border border-border rounded-3xl shadow-xl">
-                                    <h3 className="text-xl font-bold mb-6 text-primary flex items-center gap-2">
-                                        <HiOutlineTrendingUp />
-                                        7-Day Activity Trend
-                                    </h3>
-                                    <div className="h-[300px] w-full">
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <LineChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                                                <XAxis dataKey="date" stroke="rgba(255,255,255,0.3)" tick={{ fill: 'rgba(255,255,255,0.5)' }} axisLine={false} tickLine={false} />
-                                                <YAxis stroke="rgba(255,255,255,0.3)" tick={{ fill: 'rgba(255,255,255,0.5)' }} axisLine={false} tickLine={false} />
-                                                <RechartsTooltip content={<CustomTooltip />} cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 2 }} />
-                                                <Legend wrapperStyle={{ paddingTop: '20px' }} />
+                    <div className="stat-card">
+                        <div className="stat-icon" style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#34d399' }}>
+                            <HiOutlineChatAlt2 size={24} />
+                        </div>
+                        <div className="stat-info">
+                            <h3>{stats?.total_queries || 0}</h3>
+                            <p>Total Queries</p>
+                        </div>
+                    </div>
 
-                                                <Line
-                                                    type="monotone"
-                                                    dataKey="queries"
-                                                    name="Queries"
-                                                    stroke="#8b5cf6"
-                                                    strokeWidth={3}
-                                                    dot={{ r: 4, strokeWidth: 2 }}
-                                                    activeDot={{ r: 6, stroke: '#8b5cf6', strokeWidth: 2, fill: '#000' }}
-                                                />
-                                                <Line
-                                                    type="monotone"
-                                                    dataKey="uploads"
-                                                    name="Uploads"
-                                                    stroke="#3b82f6"
-                                                    strokeWidth={3}
-                                                    dot={{ r: 4, strokeWidth: 2 }}
-                                                />
-                                            </LineChart>
-                                        </ResponsiveContainer>
+                    <div className="stat-card">
+                        <div className="stat-icon" style={{ background: 'rgba(139, 92, 246, 0.1)', color: '#a78bfa' }}>
+                            <HiOutlineLightningBolt size={24} />
+                        </div>
+                        <div className="stat-info">
+                            <h3>{stats?.total_chat_sessions || 0}</h3>
+                            <p>Chat Sessions</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+
+                    {/* ── Activity Chart Concept ── */}
+                    <div className="profile-card" style={{ height: 'fit-content' }}>
+                        <h3 className="profile-card-title">
+                            <HiOutlineChartBar size={20} />
+                            Activity Over Time
+                        </h3>
+                        <div style={{ height: 250, display: 'flex', alignItems: 'flex-end', gap: '8px', padding: '1rem 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                            {activity.chart_data.map((day, i) => {
+                                const maxVal = Math.max(...activity.chart_data.map(d => Math.max(d.queries, d.uploads, 1)));
+                                const queryHeight = (day.queries / maxVal) * 100;
+                                const uploadHeight = (day.uploads / maxVal) * 100;
+
+                                return (
+                                    <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', height: '100%' }}>
+                                        <div style={{ flex: 1, width: '100%', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: '4px' }}>
+                                            {/* Query Bar */}
+                                            <div style={{ width: '40%', height: `${queryHeight}%`, background: '#3b82f6', borderRadius: '4px 4px 0 0', minHeight: day.queries > 0 ? '4px' : '0' }} title={`${day.queries} queries`} />
+                                            {/* Upload Bar */}
+                                            <div style={{ width: '40%', height: `${uploadHeight}%`, background: '#10b981', borderRadius: '4px 4px 0 0', minHeight: day.uploads > 0 ? '4px' : '0' }} title={`${day.uploads} uploads`} />
+                                        </div>
+                                        <span style={{ fontSize: '10px', color: '#64748b' }}>
+                                            {new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' })}
+                                        </span>
                                     </div>
-                                </motion.div>
+                                );
+                            })}
+                        </div>
+                        <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', fontSize: '12px', color: '#94a3b8', justifyContent: 'center' }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><div style={{ width: 10, height: 10, background: '#3b82f6', borderRadius: 2 }}></div> Queries</span>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><div style={{ width: 10, height: 10, background: '#10b981', borderRadius: 2 }}></div> Uploads</span>
+                        </div>
+                    </div>
 
-                                {/* Bar Chart: Daily Breakdown */}
-                                <motion.div variants={itemVariants} className="p-6 sm:p-8 bg-surface/80 backdrop-blur-xl border border-border rounded-3xl shadow-xl">
-                                    <h3 className="text-xl font-bold mb-6 text-primary flex items-center gap-2">
-                                        <HiOutlineChartBar />
-                                        Daily Interaction Volume
-                                    </h3>
-                                    <div className="h-[300px] w-full">
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <BarChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                                                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                                                <XAxis dataKey="date" stroke="rgba(255,255,255,0.3)" tick={{ fill: 'rgba(255,255,255,0.5)' }} axisLine={false} tickLine={false} />
-                                                <YAxis stroke="rgba(255,255,255,0.3)" tick={{ fill: 'rgba(255,255,255,0.5)' }} axisLine={false} tickLine={false} />
-                                                <RechartsTooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.05)' }} />
-                                                <Legend wrapperStyle={{ paddingTop: '20px' }} />
-
-                                                <Bar dataKey="queries" name="AI Queries" fill="#8b5cf6" radius={[4, 4, 0, 0]} maxBarSize={40} />
-                                                <Bar dataKey="uploads" name="Documents Uploaded" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={40} />
-                                            </BarChart>
-                                        </ResponsiveContainer>
-                                    </div>
-                                </motion.div>
-
-                            </div>
+                    {/* ── Recent Activity Feed ── */}
+                    <div className="profile-card">
+                        <h3 className="profile-card-title">
+                            <HiOutlineClock size={20} />
+                            Recent Activity Feed
+                        </h3>
+                        {activity.recent_activity.length === 0 ? (
+                            <p style={{ color: '#64748b', fontSize: '0.9rem', textAlign: 'center', padding: '2rem 0' }}>No recent activity.</p>
                         ) : (
-                            <motion.div variants={itemVariants} className="p-12 text-center bg-surface/50 border border-border rounded-3xl">
-                                <HiOutlineDocumentReport size={48} className="mx-auto text-secondary mb-4 opacity-50" />
-                                <h3 className="text-xl font-semibold mb-2">Not enough data yet</h3>
-                                <p className="text-secondary max-w-md mx-auto">Upload documents and ask questions to start seeing your knowledge base analytics in action.</p>
-                            </motion.div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                {activity.recent_activity.map((item, i) => (
+                                    <div key={i} style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+                                        <div style={{
+                                            padding: '8px',
+                                            borderRadius: '8px',
+                                            background: item.type === 'upload' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(59, 130, 246, 0.1)',
+                                            color: item.type === 'upload' ? '#10b981' : '#3b82f6'
+                                        }}>
+                                            {item.type === 'upload' ? <HiOutlineCloudUpload size={18} /> : <HiOutlineChatAlt2 size={18} />}
+                                        </div>
+                                        <div>
+                                            <p style={{ fontSize: '0.9rem', color: '#e2e8f0', margin: '0 0 2px 0' }}>{item.title}</p>
+                                            <p style={{ fontSize: '0.75rem', color: '#64748b', margin: 0 }}>
+                                                {new Date(item.date).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         )}
-                    </motion.div>
-                )}
+                    </div>
+                </div>
             </main>
         </motion.div>
     );
 }
+
+export default AnalyticsPage;

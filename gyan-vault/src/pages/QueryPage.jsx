@@ -31,7 +31,8 @@ function QueryPage() {
     const [sessionId, setSessionId] = useState(null);
     const [sessions, setSessions] = useState([]);
     const [showHistory, setShowHistory] = useState(false);
-    const [deepResearch, setDeepResearch] = useState(false);
+    const [activeMode, setActiveMode] = useState('ask');
+    const [activeStyle, setActiveStyle] = useState('simple');
 
     // Document upload & selection state
     const [documents, setDocuments] = useState([]);
@@ -65,7 +66,7 @@ function QueryPage() {
                 .filter(d => d.status === 'ready')
                 .map(d => d.id);
             setSelectedDocIds(readyIds);
-        } catch { /* silently fail */ }
+        } catch { /* ignore */ }
     };
 
     // ─── Inline Upload ────────────────────────────────────────
@@ -152,7 +153,7 @@ function QueryPage() {
         try {
             const res = await api.get('/chat/sessions');
             setSessions(res.data.sessions);
-        } catch { /* silently fail */ }
+        } catch { /* ignore */ }
     };
 
     const loadSession = async (sid) => {
@@ -213,44 +214,43 @@ function QueryPage() {
         setLoading(true);
 
         try {
-            const modelProvider = localStorage.getItem('gyan_vault_model') || 'gemini';
+            const modelProvider = localStorage.getItem('gyan_vault_model') || 'ollama';
 
             let res;
-            if (deepResearch) {
-                // Agentic Search
-                res = await api.post('/agent/research', {
-                    query: userMessage,
-                    model_provider: modelProvider
-                });
-            } else {
-                // RAG
+            if (activeMode === 'ask') {
                 const payload = {
                     question: userMessage,
                     doc_ids: selectedDocIds,
                     model_provider: modelProvider
                 };
                 if (sessionId) payload.session_id = sessionId;
-
                 res = await api.post('/query/ask', payload);
-            }
 
-            if (!sessionId && !deepResearch) {
-                // Only create session for standard chat for now (Agent doesn't return session_id yet)
-                // or maybe we don't save agent chats to history?
-                // Let's assume standard behavior for RAG. Agent results are ephemeral or part of current session if backend supported it.
-                // Current endpoints: /query/ask -> returns session_id. /agent/research DOES NOT return session_id.
-                // So if deepResearch, we don't set session ID.
-                if (res.data.session_id) {
+                if (!sessionId && res.data.session_id) {
                     setSessionId(res.data.session_id);
                     fetchSessions();
                 }
-            }
 
-            setMessages(prev => [...prev, {
-                type: 'ai',
-                text: res.data.answer,
-                sources: res.data.sources,
-            }]);
+                setMessages(prev => [...prev, {
+                    type: 'ai',
+                    text: res.data.answer,
+                    sources: res.data.sources,
+                }]);
+            } else {
+                res = await api.post('/academic/generate', {
+                    doc_ids: selectedDocIds,
+                    mode: activeMode,
+                    style: activeStyle,
+                    topic: userMessage,
+                    model_provider: modelProvider,
+                });
+
+                setMessages(prev => [...prev, {
+                    type: 'ai',
+                    text: res.data.content,
+                    sources: res.data.sources,
+                }]);
+            }
         } catch (err) {
             const errorMsg = err.response?.data?.detail || 'Failed to get answer.';
             setMessages(prev => [...prev, {
@@ -349,6 +349,44 @@ function QueryPage() {
 
                     {/* Chat Container */}
                     <div className="chat-container">
+                        {/* ── Academic Mode Selector ── */}
+                        <div className="mode-selector-bar">
+                            <div className="mode-pills">
+                                {[
+                                    { id: 'ask', label: '💬 Ask' },
+                                    { id: 'exam_notes', label: '📝 Notes' },
+                                    { id: 'mcqs', label: '✅ MCQs' },
+                                    { id: 'viva', label: '🎤 Viva' },
+                                    { id: 'flashcards', label: '🃏 Cards' },
+                                    { id: 'summary', label: '📋 Summary' },
+                                    { id: 'definitions', label: '📖 Definitions' },
+                                    { id: 'assignment', label: '📄 Assignment' },
+                                ].map(m => (
+                                    <button
+                                        key={m.id}
+                                        className={`mode-pill ${activeMode === m.id ? 'active' : ''}`}
+                                        onClick={() => setActiveMode(m.id)}
+                                    >
+                                        {m.label}
+                                    </button>
+                                ))}
+                            </div>
+                            {activeMode !== 'ask' && (
+                                <div className="style-pills">
+                                    <span className="style-label">Style:</span>
+                                    {['simple', 'technical', 'bullet', 'detailed'].map(s => (
+                                        <button
+                                            key={s}
+                                            className={`style-pill ${activeStyle === s ? 'active' : ''}`}
+                                            onClick={() => setActiveStyle(s)}
+                                        >
+                                            {s.charAt(0).toUpperCase() + s.slice(1)}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
                         {/* ── Inline Document Upload & Selector Bar ── */}
                         <div className="query-doc-bar">
                             {/* Upload Zone (compact) */}
@@ -487,36 +525,23 @@ function QueryPage() {
 
                         {/* ── Chat Input ── */}
                         <form className="chat-input-area" onSubmit={handleAsk}>
-                            <div className="chat-input-controls">
-                                <button
-                                    type="button"
-                                    className={`deep-research-toggle ${deepResearch ? 'active' : ''}`}
-                                    onClick={() => setDeepResearch(!deepResearch)}
-                                    title={deepResearch ? "Deep Research Mode ON" : "Enable Deep Research"}
-                                >
-                                    <HiOutlineGlobe size={18} />
-                                    <span>Deep Research</span>
-                                </button>
-                            </div>
                             <input
                                 ref={inputRef}
                                 type="text"
                                 className="chat-input"
                                 placeholder={
-                                    deepResearch
-                                        ? "Ask a complex question to research on the web..."
-                                        : (selectedDocIds.length === 0
-                                            ? "Upload a document first..."
-                                            : "Ask a question about your documents...")
+                                    selectedDocIds.length === 0
+                                        ? "Upload a document first..."
+                                        : "Ask a question about your documents..."
                                 }
                                 value={question}
                                 onChange={(e) => setQuestion(e.target.value)}
-                                disabled={loading || (selectedDocIds.length === 0 && !deepResearch)}
+                                disabled={loading || selectedDocIds.length === 0}
                             />
                             <button
                                 type="submit"
                                 className="chat-send-btn"
-                                disabled={!question.trim() || loading || (selectedDocIds.length === 0 && !deepResearch)}
+                                disabled={!question.trim() || loading || selectedDocIds.length === 0}
                             >
                                 <HiOutlinePaperAirplane size={20} />
                             </button>

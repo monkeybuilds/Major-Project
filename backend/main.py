@@ -1,7 +1,5 @@
 from contextlib import asynccontextmanager
 
-
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database.connection import init_db
@@ -10,7 +8,8 @@ from routes.documents import router as documents_router
 from routes.query import router as query_router
 from routes.chat import router as chat_router
 from routes.analytics import router as analytics_router
-from routes.agent import router as agent_router
+from routes.academic import router as academic_router
+from routes.pdf_tools import router as pdf_tools_router
 
 
 @asynccontextmanager
@@ -22,8 +21,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Gyan Vault API",
-    description="AI-powered document management and intelligent query system with chat history, summarization, and multi-format support",
-    version="2.0.0",
+    description="AI-powered academic intelligence system with document management, multi-mode content generation, and PDF tools",
+    version="3.0.0",
     lifespan=lifespan,
 )
 
@@ -42,14 +41,15 @@ app.include_router(documents_router)
 app.include_router(query_router)
 app.include_router(chat_router)
 app.include_router(analytics_router)
-app.include_router(agent_router)
+app.include_router(academic_router)
+app.include_router(pdf_tools_router)
 
 
 @app.get("/", tags=["Health"])
 def root():
     return {
         "name": "Gyan Vault API",
-        "version": "2.0.0",
+        "version": "3.0.0",
         "status": "running",
         "docs": "/docs",
     }
